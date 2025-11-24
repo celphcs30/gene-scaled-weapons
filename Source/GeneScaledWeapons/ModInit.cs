@@ -11,20 +11,22 @@ namespace GeneScaledWeapons
             bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
             Log.Message("[GeneScaledWeapons] Init. PawnRenderNode exists: " + hasNodes);
 
+            int totalPatched = 0;
             if (hasNodes)
             {
-                NodeScanUtil.LogPotentialEquipmentNodes();
 #if DEBUG
+                NodeScanUtil.LogPotentialEquipmentNodes();
                 Patcher16.Debug_ListRenderNodes();
 #endif
-                int n = Patcher16.Apply(harmony);
-                Log.Message("[GeneScaledWeapons] 1.6 patch applied. Methods patched: " + n);
+                totalPatched += Patcher16.Apply(harmony);
+                totalPatched += PatcherEquipmentUtility.Apply(harmony);
             }
             else
             {
-                int n = LegacyPatcher.Apply(harmony);
-                Log.Message("[GeneScaledWeapons] Legacy patch applied. Methods patched: " + n);
+                totalPatched += LegacyPatcher.Apply(harmony);
             }
+
+            Log.Message($"[GeneScaledWeapons] Patch applied. Methods patched: {totalPatched}");
         }
     }
 }
