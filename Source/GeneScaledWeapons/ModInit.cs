@@ -13,6 +13,7 @@ namespace GeneScaledWeapons
 
             if (hasNodes)
             {
+                NodeScanUtil.LogPotentialEquipmentNodes();
 #if DEBUG
                 Patcher16.Debug_ListRenderNodes();
 #endif

@@ -12,6 +12,7 @@ namespace GeneScaledWeapons
     internal static class Patcher16
     {
         private static bool applied;
+        static readonly string[] NameHints = { "equip", "weapon", "held", "carry", "primary", "offhand" };
 
         internal static int Apply(Harmony harmony)
         {
@@ -19,40 +20,44 @@ namespace GeneScaledWeapons
             applied = true;
 
             int patched = 0;
-
             var baseNode = AccessTools.TypeByName("Verse.PawnRenderNode");
+            var baseWorker = AccessTools.TypeByName("Verse.PawnRenderNodeWorker");
+
             if (baseNode == null)
             {
-                Log.Message("[GeneScaledWeapons] 1.6 patch: Verse.PawnRenderNode not found; skipping 1.6 render-node patch.");
+                Log.Message("[GeneScaledWeapons] 1.6 patch: Verse.PawnRenderNode not found; skipping.");
                 return 0;
             }
 
-            var asm = typeof(Pawn).Assembly; // Assembly-CSharp
-            var candidates = asm.GetTypes().Where(t =>
+            var asm = typeof(Pawn).Assembly;
+            IEnumerable<Type> candidates = asm.GetTypes().Where(t =>
                 t != null
-                && baseNode.IsAssignableFrom(t)
-                && (t.Name.IndexOf("Equipment", StringComparison.OrdinalIgnoreCase) >= 0
-                    || t.Name.IndexOf("Weapon", StringComparison.OrdinalIgnoreCase) >= 0));
+                && !t.IsAbstract
+                && ((baseNode.IsAssignableFrom(t) || (baseWorker != null && baseWorker.IsAssignableFrom(t))))
+                && NameHints.Any(h => t.Name.IndexOf(h, StringComparison.OrdinalIgnoreCase) >= 0));
 
             var transpiler = new HarmonyMethod(typeof(Patch_RenderNode_Equipment).GetMethod(nameof(Patch_RenderNode_Equipment.Transpiler), BindingFlags.Public | BindingFlags.Static));
 
+            int localPatched = 0;
             foreach (var t in candidates)
             {
                 var methods = t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                               .Where(m => m.Name.IndexOf("Render", StringComparison.OrdinalIgnoreCase) >= 0
-                                        || m.Name.IndexOf("Draw", StringComparison.OrdinalIgnoreCase) >= 0);
+                               .Where(m => !m.IsAbstract && !m.IsGenericMethodDefinition
+                                           && (m.Name.IndexOf("render", StringComparison.OrdinalIgnoreCase) >= 0
+                                               || m.Name.IndexOf("draw", StringComparison.OrdinalIgnoreCase) >= 0));
 
                 foreach (var m in methods)
                 {
                     try
                     {
                         harmony.Patch(m, transpiler: transpiler);
-                        Log.Message($"[GeneScaledWeapons] Patched {t.FullName}.{m.Name} for equipment scaling.");
+                        Log.Message($"[GeneScaledWeapons] 1.6: Patched {t.FullName}.{m.Name}");
                         patched++;
+                        localPatched++;
                     }
                     catch (Exception e)
                     {
-                        Log.Warning($"[GeneScaledWeapons] Failed to patch {t.FullName}.{m.Name}: {e}");
+                        Log.Warning($"[GeneScaledWeapons] 1.6: Failed to patch {t.FullName}.{m.Name}: {e}");
                     }
                 }
             }
@@ -94,6 +99,7 @@ namespace GeneScaledWeapons
     public static class Patch_RenderNode_Equipment
     {
         static readonly MethodInfo TRS = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.TRS), new[] { typeof(Vector3), typeof(Quaternion), typeof(Vector3) });
+        static readonly MethodInfo ScaleM = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.Scale), new[] { typeof(Vector3) });
         static readonly MethodInfo Adjust = AccessTools.Method(typeof(Patch_RenderNode_Equipment), nameof(AdjustScale));
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
@@ -105,14 +111,13 @@ namespace GeneScaledWeapons
             {
                 var ins = list[i];
 
-                if (ins.Calls(TRS))
+                if (ins.Calls(TRS) || ins.Calls(ScaleM))
                 {
-                    // Stack before TRS: pos(Vector3), rot(Quaternion), scale(Vector3)
-                    // We need to adjust scale before it's consumed by TRS
+                    // Stack has ..., (for TRS: pos, rot,) scale
                     // Method signature: AdjustScale(Vector3 scale, object nodeObj)
                     // Parameters are pushed left-to-right, so scale (already there), then push nodeObj
-                    yield return new CodeInstruction(OpCodes.Ldarg_0); // push nodeObj -> stack: pos, rot, scale, nodeObj
-                    yield return new CodeInstruction(OpCodes.Call, Adjust); // AdjustScale(scale, nodeObj) -> returns adjusted scale -> stack: pos, rot, adjusted_scale
+                    yield return new CodeInstruction(OpCodes.Ldarg_0); // push nodeObj
+                    yield return new CodeInstruction(OpCodes.Call, Adjust); // AdjustScale(scale, nodeObj) -> returns adjusted scale
                     patchedAny = true;
                 }
 
@@ -121,7 +126,7 @@ namespace GeneScaledWeapons
 
             if (!patchedAny)
             {
-                Log.Message($"[GeneScaledWeapons] Note: {original.DeclaringType?.FullName}.{original.Name} had no TRS call to patch.");
+                Log.Message($"[GeneScaledWeapons] Note: {original.DeclaringType?.FullName}.{original.Name} had no TRS/Scale call to patch.");
             }
         }
 
