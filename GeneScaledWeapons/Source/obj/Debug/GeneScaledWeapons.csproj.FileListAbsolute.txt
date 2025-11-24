@@ -1,7 +1,0 @@
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Source\obj\Debug\GeneScaledWeapons.csproj.AssemblyReference.cache
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Source\obj\Debug\GeneScaledWeapons.GeneratedMSBuildEditorConfig.editorconfig
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Source\obj\Debug\GeneScaledWeapons.csproj.CoreCompileInputs.cache
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Assemblies\GeneScaledWeapons.dll
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Assemblies\GeneScaledWeapons.pdb
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Source\obj\Debug\GeneScaledWeapons.dll
-C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\GeneScaledWeapons\Source\obj\Debug\GeneScaledWeapons.pdb
