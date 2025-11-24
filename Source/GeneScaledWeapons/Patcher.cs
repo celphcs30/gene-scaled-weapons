@@ -8,7 +8,7 @@ namespace GeneScaledWeapons
 {
     internal static class Patcher
     {
-        internal static int Apply(Harmony harmony)
+        internal static int Apply(Harmony harmony, bool suppressWarnings = false)
         {
             int patched = 0;
 
@@ -51,13 +51,13 @@ namespace GeneScaledWeapons
                 }
             }
 
-            if (patched == 0)
+            if (patched == 0 && !suppressWarnings)
             {
                 Log.Warning("[GeneScaledWeapons] Could not locate any DrawEquipmentAiming/DrawEquipment methods to patch. Weapon scaling disabled.");
             }
-            else
+            else if (patched > 0)
             {
-                Log.Message($"[GeneScaledWeapons] Patched {patched} method(s).");
+                Log.Message($"[GeneScaledWeapons] Legacy patch: Patched {patched} method(s).");
             }
 
             return patched;
