@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -11,9 +12,11 @@ namespace GeneScaledWeapons
 {
     internal static class Patch_TRSScale
     {
-        static readonly MethodInfo TRS = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.TRS), new[] { typeof(Vector3), typeof(Quaternion), typeof(Vector3) });
-        static readonly MethodInfo ScaleM = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.Scale), new[] { typeof(Vector3) });
-        static readonly MethodInfo Adjust = AccessTools.Method(typeof(Patch_TRSScale), nameof(AdjustScale));
+        // static caches (outside methods)
+        static readonly MethodInfo MI_TRS = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.TRS), new[] { typeof(Vector3), typeof(Quaternion), typeof(Vector3) });
+        static readonly MethodInfo MI_SCALE = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.Scale), new[] { typeof(Vector3) });
+        static readonly MethodInfo MI_SETTRS = AccessTools.Method(typeof(Matrix4x4), "SetTRS", new[] { typeof(Vector3), typeof(Quaternion), typeof(Vector3) });
+        static readonly MethodInfo MI_ADJUST = AccessTools.Method(typeof(Patch_TRSScale), nameof(AdjustScale));
 
         private static CodeInstruction LoadArg(int index)
         {
@@ -31,7 +34,9 @@ namespace GeneScaledWeapons
         {
             var list = new List<CodeInstruction>(instructions);
             bool patchedAny = false;
+            int countTRS = 0, countScale = 0, countSetTRS = 0;
 
+            // If static, find a Pawn arg if present
             int pawnParamIndex = -1;
             if (original.IsStatic)
             {
@@ -44,82 +49,85 @@ namespace GeneScaledWeapons
             {
                 var ins = list[i];
 
-                if (ins.Calls(TRS) || ins.Calls(ScaleM))
+                bool isTRS = ins.Calls(MI_TRS);
+                bool isScale = ins.Calls(MI_SCALE);
+                bool isSetTRS = ins.Calls(MI_SETTRS);
+
+                if (isTRS || isScale || isSetTRS)
                 {
-                    // Stack: …, scale -> …, scale, context
+                    if (isTRS) countTRS++;
+                    if (isScale) countScale++;
+                    if (isSetTRS) countSetTRS++;
+
+                    // Stack right now: ..., [this?], pos, rot, scale  (for TRS/SetTRS)  OR ..., scale (for Scale)
+                    // We want: ..., ..., scale, context -> AdjustScale -> ..., ..., scale'
                     if (original.IsStatic && pawnParamIndex >= 0)
                         yield return LoadArg(pawnParamIndex);
                     else
-                        yield return new CodeInstruction(OpCodes.Ldarg_0); // this
+                        yield return new CodeInstruction(OpCodes.Ldarg_0); // 'this' OR first arg for statics without Pawn; AdjustScale will resolve
 
-                    yield return new CodeInstruction(OpCodes.Call, Adjust);
+                    yield return new CodeInstruction(OpCodes.Call, MI_ADJUST);
                     patchedAny = true;
                 }
 
                 yield return ins;
             }
 
-#if DEBUG
-            if (!patchedAny)
-                Log.Message($"[GeneScaledWeapons] Note: {original.DeclaringType?.FullName}.{original.Name} had no TRS/Scale call to patch.");
-#endif
-            // no explicit return; iterator ends
+            Log.Message($"[GeneScaledWeapons] Transpiler on {original.DeclaringType?.FullName}.{original.Name}: TRS={countTRS}, SetTRS={countSetTRS}, Scale={countScale}, patchedAny={patchedAny}");
+            // iterator ends
         }
 
-        // Adjusts x/z scale for pawns with your gene. Context can be Pawn or a render node instance.
-        public static Vector3 AdjustScale(Vector3 s, object context)
+        static Pawn TryGetPawn(object ctx)
         {
+            if (ctx == null) return null;
+            if (ctx is Pawn p1) return p1;
+
+            // PawnRenderer path
+            if (ctx is PawnRenderer pr)
+            {
+                var pawnField = AccessTools.Field(typeof(PawnRenderer), "pawn");
+                return pawnField?.GetValue(pr) as Pawn;
+            }
+
+            // Render node/context (reflect pawn field/property if present)
             try
             {
-#if DEBUG
-                // Log.Message($"[GeneScaledWeapons] AdjustScale called with scale {s}, context {context?.GetType().Name ?? "null"}");
-#endif
-                Pawn pawn = null;
-
-                if (context is Pawn p) pawn = p;
-                else
-                {
-                    // Try node -> pawn
-                    var nodeType = AccessTools.TypeByName("Verse.PawnRenderNode");
-                    if (nodeType != null && context != null && nodeType.IsInstanceOfType(context))
-                    {
-                        // Try common paths to get Pawn from node
-                        // 1) node.tree?.pawn property/field
-                        var tree = AccessTools.Field(context.GetType(), "tree")?.GetValue(context)
-                                   ?? AccessTools.Property(context.GetType(), "tree")?.GetValue(context, null);
-                        if (tree != null)
-                        {
-                            pawn = AccessTools.Field(tree.GetType(), "pawn")?.GetValue(tree) as Pawn
-                                   ?? AccessTools.Property(tree.GetType(), "pawn")?.GetValue(tree, null) as Pawn;
-                        }
-                        // 2) direct pawn field/property
-                        pawn ??= AccessTools.Field(context.GetType(), "pawn")?.GetValue(context) as Pawn
-                                 ?? AccessTools.Property(context.GetType(), "pawn")?.GetValue(context, null) as Pawn;
-                    }
-                }
-
-                if (pawn == null)
-                    return s;
-
-                // Check if the weapon should be skipped (get primary equipment)
-                var weapon = pawn.equipment?.Primary;
-                if (weapon?.def != null && GeneScaleUtil.ShouldSkip(weapon.def))
-                    return s; // Skip scaling for this weapon
-
-                float mult = GeneScaleUtil.GetPawnScaleFactor(pawn);
-#if DEBUG
-                Log.Message($"[GeneScaledWeapons] AdjustScale for {pawn?.LabelShort ?? "null"}: {s} -> mult {mult}");
-#endif
-                if (Mathf.Approximately(mult, 1f)) return s;
-
-                s.x *= mult;
-                s.z *= mult;
-                return s;
+                var t = ctx.GetType();
+                var pi = t.GetProperty("pawn", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (pi != null && typeof(Pawn).IsAssignableFrom(pi.PropertyType))
+                    return (Pawn)pi.GetValue(ctx);
+                var fi = t.GetField("pawn", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (fi != null && typeof(Pawn).IsAssignableFrom(fi.FieldType))
+                    return (Pawn)fi.GetValue(ctx);
             }
-            catch
+            catch { }
+
+            // Thing/weapon path
+            if (ctx is ThingWithComps twc)
             {
-                return s;
+                var comp = twc.TryGetComp<CompEquippable>();
+                return comp?.PrimaryVerb?.CasterPawn;
             }
+            if (ctx is Thing t2)
+            {
+                var comp = t2.TryGetComp<CompEquippable>();
+                return comp?.PrimaryVerb?.CasterPawn;
+            }
+
+            return null;
+        }
+
+        // TEMP: force visible scaling and log so we can prove the pipeline
+        public static Vector3 AdjustScale(Vector3 s, object context)
+        {
+            var pawn = TryGetPawn(context);
+            float mult = 1.5f; // TEMP. Make it obvious. We'll restore to your gene after we see it working.
+
+            var before = s;
+            var after = new Vector3(s.x * mult, s.y * mult, s.z * mult); // all axes for visibility
+
+            Log.Message($"[GeneScaledWeapons] AdjustScale ctx={context?.GetType().FullName ?? "null"} pawn={(pawn != null ? pawn.LabelShort : "null")} {before} -> {after} mult={mult}");
+            return after;
         }
     }
 }
