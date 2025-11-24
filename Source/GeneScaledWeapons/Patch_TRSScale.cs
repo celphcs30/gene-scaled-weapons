@@ -15,77 +15,55 @@ namespace GeneScaledWeapons
         static readonly MethodInfo ScaleM = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.Scale), new[] { typeof(Vector3) });
         static readonly MethodInfo Adjust = AccessTools.Method(typeof(Patch_TRSScale), nameof(AdjustScale));
 
+        private static CodeInstruction LoadArg(int index)
+        {
+            return index switch
+            {
+                0 => new CodeInstruction(OpCodes.Ldarg_0),
+                1 => new CodeInstruction(OpCodes.Ldarg_1),
+                2 => new CodeInstruction(OpCodes.Ldarg_2),
+                3 => new CodeInstruction(OpCodes.Ldarg_3),
+                _ => new CodeInstruction(OpCodes.Ldarg_S, (byte)index)
+            };
+        }
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
         {
             var list = new List<CodeInstruction>(instructions);
             bool patchedAny = false;
 
-            // For static methods (e.g., PawnRenderUtility.DrawEquipmentAiming), pass the Pawn argument.
-            // For instance methods (nodes/workers), pass "this".
             int pawnParamIndex = -1;
             if (original.IsStatic)
             {
                 var pars = original.GetParameters();
                 for (int i = 0; i < pars.Length; i++)
-                {
-                    if (typeof(Pawn).IsAssignableFrom(pars[i].ParameterType))
-                    {
-                        pawnParamIndex = i;
-                        break;
-                    }
-                }
+                    if (typeof(Pawn).IsAssignableFrom(pars[i].ParameterType)) { pawnParamIndex = i; break; }
             }
 
             for (int i = 0; i < list.Count; i++)
             {
                 var ins = list[i];
-                bool isTRS = ins.Calls(TRS);
-                bool isScale = ins.Calls(ScaleM);
 
-                if (isTRS || isScale)
+                if (ins.Calls(TRS) || ins.Calls(ScaleM))
                 {
-                    // Stack state before call has the scale Vector3 on top.
-                    // Insert a call to AdjustScale(scale, context) BEFORE the TRS/Scale call
+                    // Stack: …, scale -> …, scale, context
                     if (original.IsStatic && pawnParamIndex >= 0)
-                    {
-                        // ldarg.<pawnIndex>
-                        var ldarg = pawnParamIndex switch
-                        {
-                            0 => OpCodes.Ldarg_0,
-                            1 => OpCodes.Ldarg_1,
-                            2 => OpCodes.Ldarg_2,
-                            3 => OpCodes.Ldarg_3,
-                            _ => OpCodes.Ldarg_S
-                        };
-                        if (pawnParamIndex >= 4)
-                        {
-                            yield return new CodeInstruction(ldarg, pawnParamIndex);
-                        }
-                        else
-                        {
-                            yield return new CodeInstruction(ldarg);
-                        }
-                    }
+                        yield return LoadArg(pawnParamIndex);
                     else
-                    {
-                        // instance method: use "this"
-                        yield return new CodeInstruction(OpCodes.Ldarg_0);
-                    }
+                        yield return new CodeInstruction(OpCodes.Ldarg_0); // this
+
                     yield return new CodeInstruction(OpCodes.Call, Adjust);
-                    // Now yield the original TRS/Scale call (with adjusted scale on stack)
-                    yield return ins;
                     patchedAny = true;
                 }
-                else
-                {
-                    yield return ins;
-                }
+
+                yield return ins;
             }
 
+#if DEBUG
             if (!patchedAny)
-            {
                 Log.Message($"[GeneScaledWeapons] Note: {original.DeclaringType?.FullName}.{original.Name} had no TRS/Scale call to patch.");
-            }
+#endif
+            // no explicit return; iterator ends
         }
 
         // Adjusts x/z scale for pawns with your gene. Context can be Pawn or a render node instance.
@@ -93,6 +71,9 @@ namespace GeneScaledWeapons
         {
             try
             {
+#if DEBUG
+                // Log.Message($"[GeneScaledWeapons] AdjustScale called with scale {s}, context {context?.GetType().Name ?? "null"}");
+#endif
                 Pawn pawn = null;
 
                 if (context is Pawn p) pawn = p;
@@ -126,6 +107,9 @@ namespace GeneScaledWeapons
                     return s; // Skip scaling for this weapon
 
                 float mult = GeneScaleUtil.GetPawnScaleFactor(pawn);
+#if DEBUG
+                Log.Message($"[GeneScaledWeapons] AdjustScale for {pawn?.LabelShort ?? "null"}: {s} -> mult {mult}");
+#endif
                 if (Mathf.Approximately(mult, 1f)) return s;
 
                 s.x *= mult;
