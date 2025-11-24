@@ -11,8 +11,13 @@ namespace GeneScaledWeapons
 {
     internal static class Patcher16
     {
+        private static bool applied;
+
         internal static int Apply(Harmony harmony)
         {
+            if (applied) return 0;
+            applied = true;
+
             int patched = 0;
 
             var baseNode = AccessTools.TypeByName("Verse.PawnRenderNode");
@@ -34,7 +39,8 @@ namespace GeneScaledWeapons
             foreach (var t in candidates)
             {
                 var methods = t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                               .Where(m => m.Name.IndexOf("Render", StringComparison.OrdinalIgnoreCase) >= 0);
+                               .Where(m => m.Name.IndexOf("Render", StringComparison.OrdinalIgnoreCase) >= 0
+                                        || m.Name.IndexOf("Draw", StringComparison.OrdinalIgnoreCase) >= 0);
 
                 foreach (var m in methods)
                 {
@@ -58,6 +64,31 @@ namespace GeneScaledWeapons
 
             return patched;
         }
+
+#if DEBUG
+        internal static void Debug_ListRenderNodes()
+        {
+            var baseNode = AccessTools.TypeByName("Verse.PawnRenderNode");
+            if (baseNode == null)
+            {
+                Log.Message("[GeneScaledWeapons] Debug: no PawnRenderNode type found.");
+                return;
+            }
+
+            var asm = typeof(Pawn).Assembly;
+            var nodes = asm.GetTypes().Where(t => t != null && baseNode.IsAssignableFrom(t)).ToList();
+
+            Log.Message("[GeneScaledWeapons] Debug: Found " + nodes.Count + " PawnRenderNode types:");
+            foreach (var t in nodes)
+            {
+                var methods = t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .Where(m => m.Name.IndexOf("Render", StringComparison.OrdinalIgnoreCase) >= 0
+                             || m.Name.IndexOf("Draw", StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Select(m => m.Name).Distinct();
+                Log.Message(" - " + t.FullName + " methods: " + string.Join(", ", methods));
+            }
+        }
+#endif
     }
 
     public static class Patch_RenderNode_Equipment

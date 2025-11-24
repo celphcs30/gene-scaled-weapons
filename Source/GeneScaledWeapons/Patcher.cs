@@ -6,10 +6,15 @@ using Verse;
 
 namespace GeneScaledWeapons
 {
-    internal static class Patcher
+    internal static class LegacyPatcher
     {
+        private static bool applied;
+
         internal static int Apply(Harmony harmony, bool suppressWarnings = false)
         {
+            if (applied) return 0;
+            applied = true;
+
             int patched = 0;
 
             // Transpilers
