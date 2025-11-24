@@ -78,11 +78,10 @@ namespace GeneScaledWeapons
                 {
                     // Stack before TRS: pos(Vector3), rot(Quaternion), scale(Vector3)
                     // We need to adjust scale before it's consumed by TRS
-                    // Insert: duplicate scale, push nodeObj, swap so nodeObj is on top, call AdjustScale(nodeObj, scale)
-                    // This replaces the scale on stack with adjusted scale
-                    yield return new CodeInstruction(OpCodes.Dup); // duplicate scale
-                    yield return new CodeInstruction(OpCodes.Ldarg_0); // push nodeObj
-                    yield return new CodeInstruction(OpCodes.Call, Adjust); // AdjustScale(nodeObj, scale) -> returns adjusted scale
+                    // Method signature: AdjustScale(Vector3 scale, object nodeObj)
+                    // Parameters are pushed left-to-right, so scale (already there), then push nodeObj
+                    yield return new CodeInstruction(OpCodes.Ldarg_0); // push nodeObj -> stack: pos, rot, scale, nodeObj
+                    yield return new CodeInstruction(OpCodes.Call, Adjust); // AdjustScale(scale, nodeObj) -> returns adjusted scale -> stack: pos, rot, adjusted_scale
                     patchedAny = true;
                 }
 
@@ -95,7 +94,7 @@ namespace GeneScaledWeapons
             }
         }
 
-        public static Vector3 AdjustScale(object nodeObj, Vector3 scale)
+        public static Vector3 AdjustScale(Vector3 scale, object nodeObj)
         {
             try
             {
