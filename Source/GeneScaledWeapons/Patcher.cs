@@ -11,56 +11,41 @@ namespace GeneScaledWeapons
         internal static int Apply(Harmony harmony)
         {
             int patched = 0;
-            var target = TryFindDrawEquipmentAiming();
-            if (target != null)
+
+            // Aiming
+            var aiming = TryFind(typeof(PawnRenderer), "DrawEquipmentAiming");
+            if (aiming != null)
             {
-                var transpiler = new HarmonyMethod(typeof(Patch_DrawEquipmentAiming).GetMethod(nameof(Patch_DrawEquipmentAiming.Transpiler), BindingFlags.Public | BindingFlags.Static));
-                try
-                {
-                    harmony.Patch(original: target, transpiler: transpiler);
-                    patched++;
-                    Log.Message($"[GeneScaledWeapons] Patched: {target.DeclaringType.FullName}.{target.Name}({string.Join(", ", target.GetParameters().Select(p=>p.ParameterType.Name))})");
-                }
-                catch (Exception e)
-                {
-                    Log.Error($"[GeneScaledWeapons] Failed to patch {target}: {e}");
-                }
+                var transp = new HarmonyMethod(typeof(Patch_DrawEquipmentAiming).GetMethod(nameof(Patch_DrawEquipmentAiming.Transpiler_Aiming), BindingFlags.Public | BindingFlags.Static));
+                harmony.Patch(aiming, transpiler: transp);
+                patched++;
             }
-            else
+            else Log.Warning("[GeneScaledWeapons] Could not find PawnRenderer.DrawEquipmentAiming; aiming scale will be skipped.");
+
+            // Idle/held
+            var equip = TryFind(typeof(PawnRenderer), "DrawEquipment");
+            if (equip != null)
             {
-                Log.Warning("[GeneScaledWeapons] Could not find PawnRenderer.DrawEquipmentAiming. Skipping weapon scale patch (compat or version mismatch).");
+                var transp = new HarmonyMethod(typeof(Patch_DrawEquipment).GetMethod(nameof(Patch_DrawEquipment.Transpiler_Equip), BindingFlags.Public | BindingFlags.Static));
+                harmony.Patch(equip, transpiler: transp);
+                patched++;
             }
+            else Log.Warning("[GeneScaledWeapons] Could not find PawnRenderer.DrawEquipment; idle/held scale will be skipped.");
+
             return patched;
         }
 
-        private static MethodInfo TryFindDrawEquipmentAiming()
+        private static MethodInfo TryFind(Type type, string name)
         {
-            // Primary: PawnRenderer.DrawEquipmentAiming(Thing, Vector3, float) [RimWorld 1.4/1.5 typical]
-            var pr = typeof(PawnRenderer);
-            var m = pr.GetMethod("DrawEquipmentAiming", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            // Prefer exact name
+            var m = type.GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (m != null) return m;
 
-            // Fallbacks: look for method by name or signature variants in PawnRenderer
-            var candidates = pr.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(mi => mi.Name.IndexOf("DrawEquipmentAiming", StringComparison.OrdinalIgnoreCase) >= 0)
-                .ToList();
+            // Fallback: any matching name
+            var candidates = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(mi => mi.Name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
             if (candidates.Count == 1) return candidates[0];
-            if (candidates.Count > 1)
-            {
-                // Prefer ones whose first arg is Thing
-                var pick = candidates.FirstOrDefault(mi =>
-                {
-                    var p = mi.GetParameters();
-                    return p.Length >= 1 && typeof(Thing).IsAssignableFrom(p[0].ParameterType);
-                }) ?? candidates[0];
-                return pick;
-            }
-
-            // Some mods move logic; as a last attempt, scan any type named *PawnRender* for a DrawEquipmentAiming
-            var asm = typeof(PawnRenderer).Assembly;
-            var altType = asm.GetTypes().FirstOrDefault(t => t.Name.Contains("PawnRender") && t.GetMethod("DrawEquipmentAiming", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) != null);
-            return altType?.GetMethod("DrawEquipmentAiming", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            return candidates.FirstOrDefault();
         }
     }
 }
-

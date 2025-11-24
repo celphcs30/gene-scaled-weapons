@@ -7,7 +7,7 @@ using Verse;
 
 namespace GeneScaledWeapons
 {
-    public static class Patch_DrawEquipmentAiming
+    public static class Patch_DrawEquipment
     {
         private static readonly AccessTools.FieldRef<PawnRenderer, Pawn> PawnRef =
             AccessTools.FieldRefAccess<PawnRenderer, Pawn>("pawn");
@@ -21,7 +21,7 @@ namespace GeneScaledWeapons
             return null;
         }
 
-        public static IEnumerable<CodeInstruction> Transpiler_Aiming(IEnumerable<CodeInstruction> instructions)
+        public static IEnumerable<CodeInstruction> Transpiler_Equip(IEnumerable<CodeInstruction> instructions)
         {
             var code = new List<CodeInstruction>(instructions);
 
@@ -30,8 +30,8 @@ namespace GeneScaledWeapons
             var drawMeshTR = AccessTools.Method(typeof(Graphics), nameof(Graphics.DrawMesh),
                 new[] { typeof(Mesh), typeof(Vector3), typeof(Quaternion), typeof(Material), typeof(int) });
 
-            var wrapperMatrix = AccessTools.Method(typeof(Patch_DrawEquipmentAiming), nameof(DrawMeshScaledWrapperMatrix));
-            var wrapperTR = AccessTools.Method(typeof(Patch_DrawEquipmentAiming), nameof(DrawMeshScaledWrapperTR));
+            var wrapperMatrix = AccessTools.Method(typeof(Patch_DrawEquipment), nameof(DrawMeshScaledWrapperMatrix_NoEq));
+            var wrapperTR = AccessTools.Method(typeof(Patch_DrawEquipment), nameof(DrawMeshScaledWrapperTR_NoEq));
 
             int replaced = 0;
             for (int i = 0; i < code.Count; i++)
@@ -40,9 +40,8 @@ namespace GeneScaledWeapons
 
                 if (ci.Calls(drawMeshMatrix))
                 {
-                    // push this (renderer) and eq (arg1)
+                    // push this (renderer); no eq param here
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
-                    yield return new CodeInstruction(OpCodes.Ldarg_1);
                     yield return new CodeInstruction(OpCodes.Call, wrapperMatrix);
                     replaced++;
                     continue;
@@ -50,7 +49,6 @@ namespace GeneScaledWeapons
                 if (ci.Calls(drawMeshTR))
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
-                    yield return new CodeInstruction(OpCodes.Ldarg_1);
                     yield return new CodeInstruction(OpCodes.Call, wrapperTR);
                     replaced++;
                     continue;
@@ -60,16 +58,18 @@ namespace GeneScaledWeapons
             }
 
             if (replaced == 0)
-                Log.Warning("[GeneScaledWeapons] Aiming transpiler: found no Graphics.DrawMesh calls.");
+                Log.Warning("[GeneScaledWeapons] Equip transpiler: found no Graphics.DrawMesh calls.");
         }
 
-        public static void DrawMeshScaledWrapperMatrix(Mesh mesh, Matrix4x4 matrix, Material material, int layer, PawnRenderer renderer, Thing eq)
+        // Wrapper for Matrix4x4 overload (no eq parameter available)
+        public static void DrawMeshScaledWrapperMatrix_NoEq(Mesh mesh, Matrix4x4 matrix, Material material, int layer, PawnRenderer renderer)
         {
             try
             {
+                var pawn = GetPawn(renderer);
+                var eq = pawn?.equipment?.Primary;
                 if (eq?.def != null && !GeneScaleUtil.ShouldSkip(eq.def))
                 {
-                    var pawn = GetPawn(renderer);
                     float f = GeneScaleUtil.GetPawnScaleFactor(pawn);
                     if (f > 0f && Mathf.Abs(f - 1f) > 0.01f)
                         matrix = matrix * Matrix4x4.Scale(new Vector3(f, 1f, f));
@@ -80,13 +80,15 @@ namespace GeneScaledWeapons
             Graphics.DrawMesh(mesh, matrix, material, layer);
         }
 
-        public static void DrawMeshScaledWrapperTR(Mesh mesh, Vector3 pos, Quaternion rot, Material material, int layer, PawnRenderer renderer, Thing eq)
+        // Wrapper for Transform overload (no eq parameter available)
+        public static void DrawMeshScaledWrapperTR_NoEq(Mesh mesh, Vector3 pos, Quaternion rot, Material material, int layer, PawnRenderer renderer)
         {
             try
             {
+                var pawn = GetPawn(renderer);
+                var eq = pawn?.equipment?.Primary;
                 if (eq?.def != null && !GeneScaleUtil.ShouldSkip(eq.def))
                 {
-                    var pawn = GetPawn(renderer);
                     float f = GeneScaleUtil.GetPawnScaleFactor(pawn);
                     if (f > 0f && Mathf.Abs(f - 1f) > 0.01f)
                     {
@@ -102,3 +104,4 @@ namespace GeneScaledWeapons
         }
     }
 }
+
