@@ -1,10 +1,14 @@
 # Build results
 [Oo]bj/
 [Bb]in/
-Assemblies/
+# Assemblies/ - commented out: we want to include compiled DLLs for users to download
 *.dll
 *.pdb
 *.exe
+# But allow Assemblies folder specifically
+!Assemblies/
+!Assemblies/*.dll
+!Assemblies/*.pdb
 
 # Visual Studio / Rider
 .vs/
