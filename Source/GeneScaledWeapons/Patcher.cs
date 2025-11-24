@@ -12,40 +12,83 @@ namespace GeneScaledWeapons
         {
             int patched = 0;
 
-            // Aiming
-            var aiming = TryFind(typeof(PawnRenderer), "DrawEquipmentAiming");
-            if (aiming != null)
-            {
-                var transp = new HarmonyMethod(typeof(Patch_DrawEquipmentAiming).GetMethod(nameof(Patch_DrawEquipmentAiming.Transpiler_Aiming), BindingFlags.Public | BindingFlags.Static));
-                harmony.Patch(aiming, transpiler: transp);
-                patched++;
-            }
-            else Log.Warning("[GeneScaledWeapons] Could not find PawnRenderer.DrawEquipmentAiming; aiming scale will be skipped.");
+            // Transpilers
+            var aimingTransp = new HarmonyMethod(typeof(Patch_DrawEquipmentAiming).GetMethod(nameof(Patch_DrawEquipmentAiming.Transpiler_Aiming), BindingFlags.Public | BindingFlags.Static));
+            var equipTransp  = new HarmonyMethod(typeof(Patch_DrawEquipment).GetMethod(nameof(Patch_DrawEquipment.Transpiler_Equip), BindingFlags.Public | BindingFlags.Static));
 
-            // Idle/held
-            var equip = TryFind(typeof(PawnRenderer), "DrawEquipment");
-            if (equip != null)
+            // 1) Try PawnRenderer (legacy)
+            patched += TryPatch(harmony, AccessTools.TypeByName("Verse.PawnRenderer"), "DrawEquipmentAiming", aimingTransp);
+            patched += TryPatch(harmony, AccessTools.TypeByName("Verse.PawnRenderer"), "DrawEquipment",       equipTransp);
+
+            // 2) Try PawnRenderUtility (newer RW)
+            patched += TryPatch(harmony, AccessTools.TypeByName("Verse.PawnRenderUtility"), "DrawEquipmentAiming", aimingTransp);
+            patched += TryPatch(harmony, AccessTools.TypeByName("Verse.PawnRenderUtility"), "DrawEquipment",       equipTransp);
+
+            // 3) Fallback: try without namespace (some forks rename namespaces)
+            patched += TryPatch(harmony, AccessTools.TypeByName("PawnRenderer"), "DrawEquipmentAiming", aimingTransp);
+            patched += TryPatch(harmony, AccessTools.TypeByName("PawnRenderer"), "DrawEquipment",       equipTransp);
+            patched += TryPatch(harmony, AccessTools.TypeByName("PawnRenderUtility"), "DrawEquipmentAiming", aimingTransp);
+            patched += TryPatch(harmony, AccessTools.TypeByName("PawnRenderUtility"), "DrawEquipment",       equipTransp);
+
+            // 4) Last-resort: scan Assembly-CSharp for any matching method names
+            if (patched == 0)
             {
-                var transp = new HarmonyMethod(typeof(Patch_DrawEquipment).GetMethod(nameof(Patch_DrawEquipment.Transpiler_Equip), BindingFlags.Public | BindingFlags.Static));
-                harmony.Patch(equip, transpiler: transp);
-                patched++;
+                var asm = typeof(Pawn).Assembly;
+                int found = 0;
+                foreach (var t in asm.GetTypes())
+                {
+                    // Skip generated and compiler types
+                    if (t.FullName == null || t.FullName.StartsWith("<")) continue;
+
+                    found += TryPatch(harmony, t, "DrawEquipmentAiming", aimingTransp, quiet: true);
+                    found += TryPatch(harmony, t, "DrawEquipment",       equipTransp,  quiet: true);
+                }
+
+                if (found > 0)
+                {
+                    Log.Message($"[GeneScaledWeapons] Fallback patched {found} method(s) by assembly scan.");
+                    patched += found;
+                }
             }
-            else Log.Warning("[GeneScaledWeapons] Could not find PawnRenderer.DrawEquipment; idle/held scale will be skipped.");
+
+            if (patched == 0)
+            {
+                Log.Warning("[GeneScaledWeapons] Could not locate any DrawEquipmentAiming/DrawEquipment methods to patch. Weapon scaling disabled.");
+            }
+            else
+            {
+                Log.Message($"[GeneScaledWeapons] Patched {patched} method(s).");
+            }
 
             return patched;
         }
 
-        private static MethodInfo TryFind(Type type, string name)
+        private static int TryPatch(Harmony harmony, Type type, string methodName, HarmonyMethod transpiler, bool quiet = false)
         {
-            // Prefer exact name
-            var m = type.GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (m != null) return m;
+            if (type == null) return 0;
 
-            // Fallback: any matching name
-            var candidates = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(mi => mi.Name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            if (candidates.Count == 1) return candidates[0];
-            return candidates.FirstOrDefault();
+            // Find method by exact name first, then contains
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            var mi = type.GetMethod(methodName, flags)
+                     ?? type.GetMethods(flags).FirstOrDefault(m => m.Name.IndexOf(methodName, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (mi == null)
+            {
+                if (!quiet) Log.Warning($"[GeneScaledWeapons] Could not find {type.FullName}.{methodName}; skipping.");
+                return 0;
+            }
+
+            try
+            {
+                harmony.Patch(mi, transpiler: transpiler);
+                if (!quiet) Log.Message($"[GeneScaledWeapons] Patched {type.FullName}.{mi.Name} ({(mi.IsStatic ? "static" : "instance")}).");
+                return 1;
+            }
+            catch (Exception e)
+            {
+                Log.Warning($"[GeneScaledWeapons] Failed to patch {type.FullName}.{mi.Name}: {e}");
+                return 0;
+            }
         }
     }
 }
