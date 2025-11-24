@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GeneScaledWeapons\ModInit.cs" />
+    <Compile Include="GeneScaledWeapons\Patcher.cs" />
     <Compile Include="GeneScaledWeapons\ModExt_SkipGeneWeaponScale.cs" />
     <Compile Include="GeneScaledWeapons\GeneScaleUtil.cs" />
     <Compile Include="GeneScaledWeapons\Patch_DrawEquipmentAiming.cs" />

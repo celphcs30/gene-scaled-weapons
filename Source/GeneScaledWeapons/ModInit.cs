@@ -8,12 +8,12 @@ namespace GeneScaledWeapons
     {
         static ModInit()
         {
-            new Harmony("celphcs30.genescaledweapons").PatchAll();
-            Log.Message("[GeneScaledWeapons] Harmony patched.");
+            var h = new Harmony("celphcs30.genescaledweapons");
+            int count = Patcher.Apply(h);
+            Log.Message($"[GeneScaledWeapons] Patched {count} method(s).");
         }
     }
 
-    // Optional settings shell (expand later if you want UI)
     public class GeneScaledWeaponsMod : Mod
     {
         public GeneScaledWeaponsMod(ModContentPack pack) : base(pack) { }
