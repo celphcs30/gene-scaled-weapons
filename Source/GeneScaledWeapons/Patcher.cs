@@ -79,19 +79,19 @@ namespace GeneScaledWeapons
 
             if (mi == null)
             {
-                if (!quiet) Log.Warning($"[GeneScaledWeapons] Could not find {type.FullName}.{methodName}; skipping.");
+                if (!quiet) GSWLog.Trace($"Could not find {type?.FullName}.{methodName}; skipping.");
                 return 0;
             }
 
             try
             {
                 harmony.Patch(mi, transpiler: transpiler);
-                if (!quiet) Log.Message($"[GeneScaledWeapons] Patched {type.FullName}.{mi.Name} ({(mi.IsStatic ? "static" : "instance")}).");
+                if (!quiet) GSWLog.Trace($"Patched {type.FullName}.{mi.Name} ({(mi.IsStatic ? "static" : "instance")}).");
                 return 1;
             }
             catch (Exception e)
             {
-                Log.Warning($"[GeneScaledWeapons] Failed to patch {type.FullName}.{mi.Name}: {e}");
+                GSWLog.WarnOnce($"Failed to patch {type.FullName}.{mi.Name}: {e}", mi.GetHashCode());
                 return 0;
             }
         }
