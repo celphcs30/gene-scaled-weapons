@@ -29,9 +29,11 @@ namespace GeneScaledWeapons
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
                 {
-                    float clamped = Mathf.Clamp(fVEF, 0.25f, 4.0f);
+                    // Apply curve: power of 0.75 to reduce scaling for large values
+                    float curved = Mathf.Pow(fVEF, 0.75f);
+                    float clamped = Mathf.Clamp(curved, 0.25f, 2.5f);
                     if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
-                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> {clamped:F2} for {pawn?.LabelShortCap}");
+                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> curved {curved:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
                     return clamped;
                 }
             }
@@ -55,7 +57,11 @@ namespace GeneScaledWeapons
                                 float baseAxis = 1.5f;
                                 float axis = Mathf.Max(ds.x, ds.y);
                                 if (axis > 0.01f)
-                                    return Mathf.Clamp(axis / baseAxis, 0.25f, 4.0f);
+                                {
+                                    float ratio = axis / baseAxis;
+                                    float curved = Mathf.Pow(ratio, 0.75f);
+                                    return Mathf.Clamp(curved, 0.25f, 2.5f);
+                                }
                             }
                         }
                     }
@@ -68,7 +74,10 @@ namespace GeneScaledWeapons
             {
                 float bodySize = pawn.BodySize; // humans ~1.0
                 if (bodySize > 0.01f)
-                    return Mathf.Clamp(bodySize, 0.25f, 4.0f);
+                {
+                    float curved = Mathf.Pow(bodySize, 0.75f);
+                    return Mathf.Clamp(curved, 0.25f, 2.5f);
+                }
             }
             catch { }
 
