@@ -24,24 +24,32 @@ namespace GeneScaledWeapons
 
             // 1) Prefer VEF stat if present
             // VEF_CosmeticBodySize_Multiplier: lower values = bigger pawns (primarch 0.55 = biggest)
-            // Try OPPOSITE: use multiplier directly but scale it up
-            // Primarch (0.55) -> scale it up to make bigger weapons
+            // Only scale UP for bigger pawns (multiplier < 1.0)
+            // Normal pawns (1.0) and smaller (>= 1.0) stay at 1.0x
             var stat = VefCosmeticSize;
             if (stat != null)
             {
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
                 {
-                    // Use multiplier directly but transform: lower multiplier (bigger pawn) = bigger weapon
-                    // Try: scale = 1.0 + (1.0 - multiplier) * some_factor
-                    // Or simpler: scale = multiplier * scale_factor, then invert the relationship
-                    // Actually, let's try: scale = 1.0 / (multiplier * 0.5) to make it bigger
-                    // Or: scale = 2.0 / multiplier
-                    float scaled = 2.0f / fVEF;
-                    float clamped = Mathf.Clamp(scaled, 0.25f, 3.0f);
-                    if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
-                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> scaled {scaled:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
-                    return clamped;
+                    // Only scale up for bigger pawns (multiplier < 1.0)
+                    if (fVEF >= 1.0f)
+                    {
+                        // Normal or smaller pawns: no scaling
+                        return 1.0f;
+                    }
+                    else
+                    {
+                        // Bigger pawns: scale up based on how much smaller the multiplier is
+                        // Primarch (0.55) -> scale up
+                        // Formula: 1.0 + (1.0 - multiplier) * factor
+                        // Try: 1.0 + (1.0 - 0.55) * 1.2 = 1.0 + 0.54 = 1.54x (close to what user wants)
+                        float scaleUp = 1.0f + (1.0f - fVEF) * 1.2f;
+                        float clamped = Mathf.Clamp(scaleUp, 1.0f, 2.5f);
+                        if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
+                            Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> scaleUp {scaleUp:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
+                        return clamped;
+                    }
                 }
             }
 
