@@ -23,17 +23,21 @@ namespace GeneScaledWeapons
             if (pawn == null || pawn.Destroyed) return 1f;
 
             // 1) Prefer VEF stat if present
+            // Note: VEF_CosmeticBodySize_Multiplier is inverse - lower values = bigger pawns
+            // So we invert it: weaponScale = 1.0 / bodySizeMultiplier
             var stat = VefCosmeticSize;
             if (stat != null)
             {
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
                 {
+                    // Invert: smaller body multiplier = bigger weapon
+                    float inverted = 1.0f / fVEF;
                     // Apply curve: power of 0.75 to reduce scaling for large values
-                    float curved = Mathf.Pow(fVEF, 0.75f);
+                    float curved = Mathf.Pow(inverted, 0.75f);
                     float clamped = Mathf.Clamp(curved, 0.25f, 2.5f);
                     if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
-                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> curved {curved:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
+                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> inverted {inverted:F2} -> curved {curved:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
                     return clamped;
                 }
             }
