@@ -7,33 +7,42 @@ namespace GeneScaledWeapons
 {
     internal static class ScaleFactor
     {
-        // Return a factor to multiply vanilla scale by (1 = no change).
         public static float Factor(Pawn pawn, Thing eq)
         {
-            // Defensive nulls
-            if (pawn == null || eq?.def == null)
-                return 1f;
-
-            // Gate (null-safe + debug)
-            if (!ScaleGate.ShouldScale(eq))
-                return 1f;
+            if (pawn == null || eq?.def == null) return 1f;
+            if (!ScaleGate.ShouldScale(eq)) return 1f;
 
             // Gene factor from existing calculator
             float geneFactor = GeneScaleUtil.WeaponScaleFor(pawn);
-
+            
             // Per-def extra multiplier
             float defMult = ScaleGate.ExtraMult(eq);
-
-            float final = geneFactor * defMult;
-
-            // Optional sanity: clamp to reasonable range to avoid crazy visuals
-            if (final < 0.25f) final = 0.25f;
-            if (final > 4f) final = 4f;
-
-            return final;
+            float f = geneFactor * defMult;
+            
+            if (f < 0.25f) f = 0.25f;
+            if (f > 4f) f = 4f;
+            return f;
         }
 
-        // Helper to multiply a Vector3 uniformly on X/Z, keep Y as-is
+        public static Matrix4x4 MultiplyMatrix(Matrix4x4 m, Pawn pawn, Thing eq)
+        {
+            float f = Factor(pawn, eq);
+            if (Mathf.Approximately(f, 1f)) return m;
+            
+            // Post-multiply by scale on X/Z: scale columns 0 and 2
+            m.m00 *= f; m.m10 *= f; m.m20 *= f; m.m30 *= f;
+            m.m02 *= f; m.m12 *= f; m.m22 *= f; m.m32 *= f;
+            return m;
+        }
+
+        // Overload that fetches eq safely
+        public static Matrix4x4 MultiplyMatrix(Matrix4x4 m, Pawn pawn)
+        {
+            Thing eq = pawn?.equipment?.Primary;
+            return MultiplyMatrix(m, pawn, eq);
+        }
+
+        // Legacy Vector3 multiply (kept for backward compat)
         public static Vector3 MultiplyVec(Vector3 vanillaScale, object pawnOrRenderer, Thing eq)
         {
             // Resolve pawn from pawnOrRenderer (could be Pawn, PawnRenderer, or null)

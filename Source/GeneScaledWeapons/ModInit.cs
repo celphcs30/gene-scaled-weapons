@@ -20,6 +20,30 @@ namespace GeneScaledWeapons
             bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
             GSWLog.Trace("Init. PawnRenderNode exists: " + hasNodes);
 
+            // Patch DrawEquipmentAndApparelExtras (1.6 method) - always try this first
+            var drawExtrasType = AccessTools.TypeByName("Verse.PawnRenderUtility");
+            var drawExtrasMethod = drawExtrasType != null ? AccessTools.Method(drawExtrasType, "DrawEquipmentAndApparelExtras") : null;
+            int drawExtrasPatched = 0;
+            if (drawExtrasMethod != null)
+            {
+                try
+                {
+                    var prefixMethod = AccessTools.Method(typeof(Patches.Patch_DrawExtras), "Prefix");
+                    var finalizerMethod = AccessTools.Method(typeof(Patches.Patch_DrawExtras), "Finalizer");
+                    var transpilerMethod = AccessTools.Method(typeof(Patches.Patch_DrawExtras), "Transpiler");
+                    harmony.Patch(drawExtrasMethod,
+                        prefix: prefixMethod != null ? new HarmonyMethod(prefixMethod) : null,
+                        finalizer: finalizerMethod != null ? new HarmonyMethod(finalizerMethod) : null,
+                        transpiler: transpilerMethod != null ? new HarmonyMethod(transpilerMethod) : null);
+                    drawExtrasPatched = 1;
+                    GSWLog.Trace("Patched PawnRenderUtility.DrawEquipmentAndApparelExtras");
+                }
+                catch (System.Exception e)
+                {
+                    GSWLog.WarnOnce($"Failed to patch DrawEquipmentAndApparelExtras: {e}", drawExtrasMethod.GetHashCode());
+                }
+            }
+
             int rnPatched = 0;
             int classicPatched = 0;
             if (hasNodes)
@@ -34,7 +58,12 @@ namespace GeneScaledWeapons
                 classicPatched = LegacyPatcher.Apply(harmony);
             }
 
-            int totalPatched = rnPatched + classicPatched;
+            int totalPatched = rnPatched + classicPatched + drawExtrasPatched;
+
+            if (drawExtrasPatched > 0)
+            {
+                GSWLog.Min("GeneScaledWeapons: Patched DrawEquipmentAndApparelExtras (1.6 method)");
+            }
 
             if (rnPatched == 0 && classicPatched > 0)
             {
@@ -46,7 +75,7 @@ namespace GeneScaledWeapons
                 GSWLog.Error("GeneScaledWeapons: No weapon draw hooks patched. Scaling cannot run.");
             }
 
-            GSWLog.Min($"GeneScaledWeapons: Patch applied. Methods patched: RN={rnPatched}, classic={classicPatched}, total={totalPatched}");
+            GSWLog.Min($"GeneScaledWeapons: Patch applied. Methods patched: DrawExtras={drawExtrasPatched}, RN={rnPatched}, classic={classicPatched}, total={totalPatched}");
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
