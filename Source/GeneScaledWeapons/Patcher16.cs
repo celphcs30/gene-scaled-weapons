@@ -47,16 +47,16 @@ namespace GeneScaledWeapons
 
                 foreach (var m in methods)
                 {
-                    // Count found targets before patching
-                    rnPatched++;
                     try
                     {
                         harmony.Patch(m, transpiler: transpiler);
+                        rnPatched++;
                         GSWLog.Trace($"1.6: Patched {t.FullName}.{m.Name}");
                     }
                     catch (Exception e)
                     {
                         GSWLog.WarnOnce($"1.6: Failed to patch {t.FullName}.{m.Name}: {e}", m.GetHashCode());
+                        // Don't count failed patches
                     }
                 }
             }

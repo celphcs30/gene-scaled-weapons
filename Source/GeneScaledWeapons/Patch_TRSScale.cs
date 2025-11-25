@@ -139,7 +139,7 @@ namespace GeneScaledWeapons
 
                 // Per-pawn multiplier
                 float mult = GeneScaleUtil.WeaponScaleFor(pawn);
-                if (mult == 1f) return s;
+                if (Mathf.Approximately(mult, 1f)) return s;
 
                 // Apply per-def multiplier
                 float extraMult = ScaleGate.ExtraMult(eq);

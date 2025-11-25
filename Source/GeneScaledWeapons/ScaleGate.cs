@@ -42,10 +42,10 @@ namespace GeneScaledWeapons
                 }
             }
 
-            // Settings: be null-safe, default to true for ranged, false for melee
+            // Settings: be null-safe, default to true so scaling isn't accidentally off
             bool isRanged = eq.def.IsRangedWeapon;
             bool scaleRanged = s?.scaleRanged ?? true;
-            bool scaleMelee = s?.scaleMelee ?? false; // Default false for melee, true for ranged
+            bool scaleMelee = s?.scaleMelee ?? true;
 
             if (!force)
             {
