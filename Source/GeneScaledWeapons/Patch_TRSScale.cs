@@ -73,7 +73,10 @@ namespace GeneScaledWeapons
                 yield return ins;
             }
 
-            Log.Message($"[GeneScaledWeapons] Transpiler on {original.DeclaringType?.FullName}.{original.Name}: TRS={countTRS}, SetTRS={countSetTRS}, Scale={countScale}, patchedAny={patchedAny}");
+#if DEBUG
+            if (patchedAny)
+                Log.Message($"[GeneScaledWeapons] Transpiler on {original.DeclaringType?.FullName}.{original.Name}: TRS={countTRS}, SetTRS={countSetTRS}, Scale={countScale}");
+#endif
             // iterator ends
         }
 
@@ -117,17 +120,38 @@ namespace GeneScaledWeapons
             return null;
         }
 
-        // TEMP: force visible scaling and log so we can prove the pipeline
         public static Vector3 AdjustScale(Vector3 s, object context)
         {
-            var pawn = TryGetPawn(context);
-            float mult = 1.5f; // TEMP. Make it obvious. We'll restore to your gene after we see it working.
+            try
+            {
+                // Resolve pawn
+                var pawn = TryGetPawn(context);
+                if (pawn == null) return s;
 
-            var before = s;
-            var after = new Vector3(s.x * mult, s.y * mult, s.z * mult); // all axes for visibility
+                // Only scale actual held weapons
+                if (!(context is ThingWithComps eq)) return s;
+                var comp = eq.TryGetComp<CompEquippable>();
+                if (comp == null) return s;
 
-            Log.Message($"[GeneScaledWeapons] AdjustScale ctx={context?.GetType().FullName ?? "null"} pawn={(pawn != null ? pawn.LabelShort : "null")} {before} -> {after} mult={mult}");
-            return after;
+                // Must be drawn for this pawn (not some preview or other owner)
+                if (comp.PrimaryVerb?.CasterPawn != pawn) return s;
+
+                // Optional: allow defs to opt-out
+                var skipExt = eq.def?.GetModExtension<ModExt_SkipGeneWeaponScale>();
+                if (skipExt != null) return s;
+
+                // Per-pawn multiplier
+                float mult = GeneScaleUtil.WeaponScaleFor(pawn);
+                if (mult == 1f) return s;
+
+                // Scale only X/Z for RimWorld quads; keep Y as-is
+                return new Vector3(s.x * mult, s.y, s.z * mult);
+            }
+            catch (Exception e)
+            {
+                Log.Error($"[GeneScaledWeapons] AdjustScale error: {e}");
+                return s;
+            }
         }
     }
 }

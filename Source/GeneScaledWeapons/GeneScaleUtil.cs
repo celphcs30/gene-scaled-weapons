@@ -81,5 +81,26 @@ namespace GeneScaledWeapons
 
             return false;
         }
+
+        // Replace with your actual gene logic later.
+        public static float WeaponScaleFor(Pawn pawn)
+        {
+            if (pawn == null) return 1f;
+
+            // Use existing GetPawnScaleFactor which already has VEF stat, body graphic, and BodySize fallbacks
+            return GetPawnScaleFactor(pawn);
+
+            // Example fallback: derive from body size (keeps humans ~1.0)
+            // Clamp so huge races don't go nuts; tune as you like.
+            // float body = pawn.BodySize; // human ~1.0
+            // float mult = Mathf.Clamp(body, 0.5f, 2.0f);
+
+            // If you have specific genes that should control weapon scale,
+            // fold them in here, e.g. multiply by extensions on genes.
+            // foreach (var g in pawn.genes?.GenesListForReading ?? List<Gene>.Empty)
+            //   if (g.def.GetModExtension<ModExt_WeaponScale>() is { } ext) mult *= ext.mult;
+
+            // return mult;
+        }
     }
 }
