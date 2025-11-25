@@ -11,7 +11,10 @@ namespace GeneScaledWeapons
         public GeneScaledWeaponsMod(ModContentPack content) : base(content)
         {
             Settings = GetSettings<ModSettings_GSW>();
-            GSWLog.LevelSetting = Settings.logLevel;
+            if (Settings != null)
+            {
+                GSWLog.LevelSetting = Settings.logLevel;
+            }
 
             var harmony = new Harmony("celphcs30.genescaledweapons");
             bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
@@ -40,7 +43,7 @@ namespace GeneScaledWeapons
             }
             else if (totalPatched == 0)
             {
-                GSWLog.Error("No weapon draw hooks patched. Weapon scaling disabled.");
+                GSWLog.Error("GeneScaledWeapons: No weapon draw hooks patched. Scaling cannot run.");
             }
 
             GSWLog.Min($"GeneScaledWeapons: Patch applied. Methods patched: RN={rnPatched}, classic={classicPatched}, total={totalPatched}");
@@ -63,6 +66,8 @@ namespace GeneScaledWeapons
             l.Gap();
             l.CheckboxLabeled("Scale ranged weapons", ref Settings.scaleRanged);
             l.CheckboxLabeled("Scale melee weapons", ref Settings.scaleMelee);
+            l.GapLine();
+            l.CheckboxLabeled("Debug: Force scaling (ignore blacklists and settings)", ref Settings.debugForceScale);
             l.End();
         }
 
