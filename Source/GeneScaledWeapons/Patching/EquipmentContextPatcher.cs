@@ -155,13 +155,6 @@ namespace GeneScaledWeapons
             if (pawn != null)
             {
                 RenderCtx.CurrentPawn = pawn;
-                var factor = ScaleFactor.Factor(pawn);
-                if (Prefs.DevMode)
-                    Log.Message($"[GeneScaledWeapons] Context set: pawn={pawn?.LabelShortCap}, factor={factor:F2}");
-            }
-            else if (Prefs.DevMode)
-            {
-                Log.Warning($"[GeneScaledWeapons] ContextPrefix: Could not extract pawn from instance={__instance?.GetType()?.Name}, args={__args?.Length}");
             }
         }
 
