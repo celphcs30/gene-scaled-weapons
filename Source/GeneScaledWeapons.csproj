@@ -50,6 +50,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GeneScaledWeapons\ModInit.cs" />
+    <Compile Include="GeneScaledWeapons\GSWLog.cs" />
+    <Compile Include="GeneScaledWeapons\ModSettings_GSW.cs" />
     <Compile Include="GeneScaledWeapons\Patcher.cs" />
     <Compile Include="GeneScaledWeapons\Patcher16.cs" />
     <Compile Include="GeneScaledWeapons\PatcherEquipmentUtility.cs" />

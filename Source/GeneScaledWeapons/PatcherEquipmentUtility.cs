@@ -49,9 +49,9 @@ namespace GeneScaledWeapons
             }
 
             if (patched == 0)
-                Log.Warning("[GeneScaledWeapons] Equip patch: found no *DrawEquipment* methods to patch.");
+                GSWLog.WarnOnce("Equip patch: found no *DrawEquipment* methods to patch.", 19482232);
             else
-                Log.Message($"[GeneScaledWeapons] Equip patch: Patched {patched} method(s).");
+                GSWLog.Min($"Equip patch: Patched {patched} method(s).");
 
             return patched;
         }
@@ -62,12 +62,12 @@ namespace GeneScaledWeapons
             {
                 var transpiler = new HarmonyMethod(typeof(Patch_TRSScale).GetMethod(nameof(Patch_TRSScale.Transpiler)));
                 harmony.Patch(m, transpiler: transpiler);
-                Log.Message($"[GeneScaledWeapons] Equip patch: Patched {m.DeclaringType?.FullName}.{m.Name}");
+                GSWLog.Trace($"Equip patch: Patched {m.DeclaringType?.FullName}.{m.Name}");
                 count++;
             }
             catch (Exception e)
             {
-                Log.Warning($"[GeneScaledWeapons] Equip patch: Failed to patch {m.DeclaringType?.FullName}.{m.Name}: {e}");
+                GSWLog.WarnOnce($"Equip patch: Failed to patch {m.DeclaringType?.FullName}.{m.Name}: {e}", m.GetHashCode());
             }
         }
     }

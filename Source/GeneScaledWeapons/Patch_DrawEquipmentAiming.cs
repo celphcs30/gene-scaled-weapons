@@ -60,7 +60,7 @@ namespace GeneScaledWeapons
             }
 
             if (replaced == 0)
-                Log.Warning("[GeneScaledWeapons] Aiming transpiler: found no Graphics.DrawMesh calls.");
+                GSWLog.Trace("Aiming transpiler: found no Graphics.DrawMesh calls.");
         }
 
         public static void DrawMeshScaledWrapperMatrix(Mesh mesh, Matrix4x4 matrix, Material material, int layer, PawnRenderer renderer, Thing eq)

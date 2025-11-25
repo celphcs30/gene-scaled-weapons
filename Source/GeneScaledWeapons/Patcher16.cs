@@ -25,7 +25,7 @@ namespace GeneScaledWeapons
 
             if (baseNode == null)
             {
-                Log.Message("[GeneScaledWeapons] 1.6 patch: Verse.PawnRenderNode not found; skipping.");
+                GSWLog.Trace("1.6 patch: Verse.PawnRenderNode not found; skipping.");
                 return 0;
             }
 
@@ -51,21 +51,21 @@ namespace GeneScaledWeapons
                     try
                     {
                         harmony.Patch(m, transpiler: transpiler);
-                        Log.Message($"[GeneScaledWeapons] 1.6: Patched {t.FullName}.{m.Name}");
+                        GSWLog.Trace($"1.6: Patched {t.FullName}.{m.Name}");
                         patched++;
                         localPatched++;
                     }
                     catch (Exception e)
                     {
-                        Log.Warning($"[GeneScaledWeapons] 1.6: Failed to patch {t.FullName}.{m.Name}: {e}");
+                        GSWLog.WarnOnce($"1.6: Failed to patch {t.FullName}.{m.Name}: {e}", m.GetHashCode());
                     }
                 }
             }
 
             if (patched == 0)
-                Log.Warning("[GeneScaledWeapons] 1.6 patch: No equipment/weapon render-node methods got patched. Weapon scaling disabled.");
+                GSWLog.WarnOnce("1.6 patch: No equipment/weapon render-node methods got patched. Weapon scaling disabled.", 19482231);
             else
-                Log.Message($"[GeneScaledWeapons] 1.6 patch: Patched {patched} method(s).");
+                GSWLog.Trace($"1.6 patch: Patched {patched} method(s).");
 
             return patched;
         }
@@ -76,21 +76,21 @@ namespace GeneScaledWeapons
             var baseNode = AccessTools.TypeByName("Verse.PawnRenderNode");
             if (baseNode == null)
             {
-                Log.Message("[GeneScaledWeapons] Debug: no PawnRenderNode type found.");
+                GSWLog.Verb("Debug: no PawnRenderNode type found.");
                 return;
             }
 
             var asm = typeof(Pawn).Assembly;
             var nodes = asm.GetTypes().Where(t => t != null && baseNode.IsAssignableFrom(t)).ToList();
 
-            Log.Message("[GeneScaledWeapons] Debug: Found " + nodes.Count + " PawnRenderNode types:");
+            GSWLog.Verb($"Debug: Found {nodes.Count} PawnRenderNode types:");
             foreach (var t in nodes)
             {
                 var methods = t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                     .Where(m => m.Name.IndexOf("Render", StringComparison.OrdinalIgnoreCase) >= 0
                              || m.Name.IndexOf("Draw", StringComparison.OrdinalIgnoreCase) >= 0)
                     .Select(m => m.Name).Distinct();
-                Log.Message(" - " + t.FullName + " methods: " + string.Join(", ", methods));
+                GSWLog.Trace($" - {t.FullName} methods: {string.Join(", ", methods)}");
             }
         }
 #endif
@@ -126,7 +126,7 @@ namespace GeneScaledWeapons
 
             if (!patchedAny)
             {
-                Log.Message($"[GeneScaledWeapons] Note: {original.DeclaringType?.FullName}.{original.Name} had no TRS/Scale call to patch.");
+                GSWLog.Trace($"Note: {original.DeclaringType?.FullName}.{original.Name} had no TRS/Scale call to patch.");
             }
         }
 
@@ -152,7 +152,7 @@ namespace GeneScaledWeapons
             }
             catch (Exception e)
             {
-                Log.Warning("[GeneScaledWeapons] AdjustScale failed: " + e);
+                GSWLog.Error("AdjustScale failed: " + e);
             }
             return scale;
         }

@@ -26,7 +26,7 @@ namespace GeneScaledWeapons
 
                 if (nodeBase == null)
                 {
-                    Log.Message("[GeneScaledWeapons] Scan: PawnRenderNode base not found.");
+                    GSWLog.Trace("Scan: PawnRenderNode base not found.");
                     return;
                 }
 
@@ -34,14 +34,14 @@ namespace GeneScaledWeapons
                 var nodes = allTypes.Where(t => nodeBase.IsAssignableFrom(t)).ToList();
                 var workers = workerBase != null ? allTypes.Where(t => workerBase.IsAssignableFrom(t)).ToList() : new List<Type>();
 
-                Log.Message($"[GeneScaledWeapons] Scan: Found {nodes.Count} nodes, {workers.Count} workers.");
+                GSWLog.Trace($"Scan: Found {nodes.Count} nodes, {workers.Count} workers.");
 
                 ScanSet("Node", nodes);
                 ScanSet("Worker", workers);
             }
             catch (Exception e)
             {
-                Log.Warning("[GeneScaledWeapons] Scan failed: " + e);
+                GSWLog.Error("Scan failed: " + e);
             }
         }
 
@@ -66,7 +66,7 @@ namespace GeneScaledWeapons
 
                 if (methods.Count == 0) continue;
 
-                Log.Message($"[GeneScaledWeapons] Scan {label}: {t.FullName}");
+                GSWLog.Trace($"Scan {label}: {t.FullName}");
 
                 foreach (var m in methods)
                 {
@@ -96,7 +96,7 @@ namespace GeneScaledWeapons
                     }
                     catch { /* ignore methods we can't read */ }
 
-                    Log.Message($"  - {m.Name} (params: {m.GetParameters().Length}, returns: {m.ReturnType.Name}) | TRS:{hasTRS} Scale:{hasScale} DrawMesh:{hasDrawMesh}");
+                    GSWLog.Trace($"  - {m.Name} (params: {m.GetParameters().Length}, returns: {m.ReturnType.Name}) | TRS:{hasTRS} Scale:{hasScale} DrawMesh:{hasDrawMesh}");
                 }
             }
         }

@@ -73,10 +73,8 @@ namespace GeneScaledWeapons
                 yield return ins;
             }
 
-#if DEBUG
             if (patchedAny)
-                Log.Message($"[GeneScaledWeapons] Transpiler on {original.DeclaringType?.FullName}.{original.Name}: TRS={countTRS}, SetTRS={countSetTRS}, Scale={countScale}");
-#endif
+                GSWLog.Trace($"Transpiler on {original.DeclaringType?.FullName}.{original.Name}: TRS={countTRS}, SetTRS={countSetTRS}, Scale={countScale}");
             // iterator ends
         }
 
@@ -149,7 +147,7 @@ namespace GeneScaledWeapons
             }
             catch (Exception e)
             {
-                Log.Error($"[GeneScaledWeapons] AdjustScale error: {e}");
+                GSWLog.Error($"AdjustScale error: {e}");
                 return s;
             }
         }

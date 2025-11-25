@@ -58,7 +58,7 @@ namespace GeneScaledWeapons
             }
 
             if (replaced == 0)
-                Log.Warning("[GeneScaledWeapons] Equip transpiler: found no Graphics.DrawMesh calls.");
+                GSWLog.Trace("Equip transpiler: found no Graphics.DrawMesh calls.");
         }
 
         // Wrapper for Matrix4x4 overload (no eq parameter available)
