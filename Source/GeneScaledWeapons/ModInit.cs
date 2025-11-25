@@ -20,28 +20,18 @@ namespace GeneScaledWeapons
             bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
             GSWLog.Trace("Init. PawnRenderNode exists: " + hasNodes);
 
-            // Patch DrawEquipmentAndApparelExtras (1.6 method) - always try this first
-            var drawExtrasType = AccessTools.TypeByName("Verse.PawnRenderUtility");
-            var drawExtrasMethod = drawExtrasType != null ? AccessTools.Method(drawExtrasType, "DrawEquipmentAndApparelExtras") : null;
+            // Patch DrawEquipmentAndApparelExtras context (1.6 method) - always try this first
             int drawExtrasPatched = 0;
-            if (drawExtrasMethod != null)
+            try
             {
-                try
-                {
-                    var prefixMethod = AccessTools.Method(typeof(Patches.Patch_DrawExtras), "Prefix");
-                    var finalizerMethod = AccessTools.Method(typeof(Patches.Patch_DrawExtras), "Finalizer");
-                    var transpilerMethod = AccessTools.Method(typeof(Patches.Patch_DrawExtras), "Transpiler");
-                    harmony.Patch(drawExtrasMethod,
-                        prefix: prefixMethod != null ? new HarmonyMethod(prefixMethod) : null,
-                        finalizer: finalizerMethod != null ? new HarmonyMethod(finalizerMethod) : null,
-                        transpiler: transpilerMethod != null ? new HarmonyMethod(transpilerMethod) : null);
-                    drawExtrasPatched = 1;
-                    GSWLog.Trace("Patched PawnRenderUtility.DrawEquipmentAndApparelExtras");
-                }
-                catch (System.Exception e)
-                {
-                    GSWLog.WarnOnce($"Failed to patch DrawEquipmentAndApparelExtras: {e}", drawExtrasMethod.GetHashCode());
-                }
+                harmony.CreateClassProcessor(typeof(Patches.Patch_DrawExtrasCtx)).Patch();
+                harmony.CreateClassProcessor(typeof(Patches.Patch_GenDraw_Draw)).Patch();
+                drawExtrasPatched = 1;
+                GSWLog.Trace("Patched DrawEquipmentAndApparelExtras context and GenDraw.DrawMeshNowOrLater");
+            }
+            catch (System.Exception e)
+            {
+                GSWLog.WarnOnce($"Failed to patch DrawEquipmentAndApparelExtras/GenDraw: {e}", typeof(Patches.Patch_DrawExtrasCtx).GetHashCode());
             }
 
             int rnPatched = 0;

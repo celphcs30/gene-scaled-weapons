@@ -56,8 +56,8 @@
     <Compile Include="GeneScaledWeapons\ScaleGate.cs" />
     <Compile Include="GeneScaledWeapons\ScaleFactor.cs" />
     <Compile Include="GeneScaledWeapons\RenderCtx.cs" />
-    <Compile Include="GeneScaledWeapons\GSWGraphics.cs" />
-    <Compile Include="GeneScaledWeapons\Patches\Patch_DrawExtras.cs" />
+    <Compile Include="GeneScaledWeapons\Patches\Patch_DrawExtrasCtx.cs" />
+    <Compile Include="GeneScaledWeapons\Patches\Patch_GenDraw_Draw.cs" />
     <Compile Include="GeneScaledWeapons\Patcher.cs" />
     <Compile Include="GeneScaledWeapons\Patcher16.cs" />
     <Compile Include="GeneScaledWeapons\PatcherEquipmentUtility.cs" />
