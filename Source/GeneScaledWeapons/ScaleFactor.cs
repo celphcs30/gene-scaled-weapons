@@ -38,11 +38,10 @@ namespace GeneScaledWeapons
                     // Normal (1.0) -> 2.0 - 1.0 = 1.0x
                     // Small (1.5) -> 2.0 - 1.5 = 0.5x
                     float transformed = 2.0f - fVEF;
-                    // Apply curve: power of 0.75 to reduce scaling for large values
-                    float curved = Mathf.Pow(transformed, 0.75f);
-                    float clamped = Mathf.Clamp(curved, 0.25f, 2.5f);
+                    // No curve for now - test if this works better
+                    float clamped = Mathf.Clamp(transformed, 0.25f, 2.5f);
                     if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
-                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> transformed {transformed:F2} -> curved {curved:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
+                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> transformed {transformed:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
                     return clamped;
                 }
             }
