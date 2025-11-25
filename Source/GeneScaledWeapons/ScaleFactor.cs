@@ -23,9 +23,9 @@ namespace GeneScaledWeapons
             if (pawn == null || pawn.Destroyed) return 1f;
 
             // 1) Prefer VEF stat if present
-            // VEF_CosmeticBodySize_Multiplier: lower values = bigger pawns
-            // For weapon scaling: we want bigger pawns = bigger weapons
-            // Formula: weaponScale = 1.0 + (1.0 - bodySizeMultiplier)
+            // VEF_CosmeticBodySize_Multiplier: lower values = bigger pawns (primarch 0.55 = biggest)
+            // For weapon scaling: bigger pawns should have bigger weapons
+            // Formula: weaponScale = 2.0 - bodySizeMultiplier
             // This gives: 0.55 -> 1.45x, 1.0 -> 1.0x, 1.5 -> 0.5x
             var stat = VefCosmeticSize;
             if (stat != null)
@@ -33,10 +33,11 @@ namespace GeneScaledWeapons
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
                 {
-                    // Transform: bigger pawns (lower multiplier) = bigger weapons
-                    // Primarch (0.55) -> 1.0 + (1.0 - 0.55) = 1.45x
-                    // Normal (1.0) -> 1.0 + (1.0 - 1.0) = 1.0x
-                    float transformed = 1.0f + (1.0f - fVEF);
+                    // Simple inverse: bigger pawns (lower multiplier) = bigger weapons
+                    // Primarch (0.55) -> 2.0 - 0.55 = 1.45x
+                    // Normal (1.0) -> 2.0 - 1.0 = 1.0x
+                    // Small (1.5) -> 2.0 - 1.5 = 0.5x
+                    float transformed = 2.0f - fVEF;
                     // Apply curve: power of 0.75 to reduce scaling for large values
                     float curved = Mathf.Pow(transformed, 0.75f);
                     float clamped = Mathf.Clamp(curved, 0.25f, 2.5f);
