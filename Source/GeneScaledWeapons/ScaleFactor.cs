@@ -16,15 +16,13 @@ namespace GeneScaledWeapons
             return f;
         }
 
-        public static Matrix4x4 MultiplyMatrix(Matrix4x4 m, Pawn pawn)
+        public static Matrix4x4 Apply(Matrix4x4 m, Pawn pawn)
         {
             float f = Factor(pawn);
             if (Mathf.Approximately(f, 1f)) return m;
-
-            // Scale X and Z columns uniformly
-            m.m00 *= f; m.m10 *= f; m.m20 *= f; m.m30 *= f;
-            m.m02 *= f; m.m12 *= f; m.m22 *= f; m.m32 *= f;
-            return m;
+            // Right-multiply to scale in local space (T * R * S) -> T * R * (S * scale)
+            var s = Matrix4x4.Scale(new Vector3(f, 1f, f));
+            return m * s;
         }
 
         // Legacy Vector3 multiply (for backward compat with old TRS patches)
@@ -48,6 +46,9 @@ namespace GeneScaledWeapons
             
             return new Vector3(vanillaScale.x * f, vanillaScale.y, vanillaScale.z * f);
         }
+
+        // Legacy alias for backward compat
+        public static Matrix4x4 MultiplyMatrix(Matrix4x4 m, Pawn pawn) => Apply(m, pawn);
     }
 }
 

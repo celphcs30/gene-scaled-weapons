@@ -20,18 +20,19 @@ namespace GeneScaledWeapons
             bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
             GSWLog.Trace("Init. PawnRenderNode exists: " + hasNodes);
 
-            // Patch DrawEquipmentAndApparelExtras context (1.6 method) - always try this first
+            // Patch all equipment draw methods to set context, then scale at GenDraw.DrawMeshNowOrLater
             int drawExtrasPatched = 0;
             try
             {
                 harmony.CreateClassProcessor(typeof(Patches.Patch_DrawExtrasCtx)).Patch();
-                harmony.CreateClassProcessor(typeof(Patches.Patch_GenDraw_Draw)).Patch();
+                harmony.CreateClassProcessor(typeof(Patch_PawnRenderer_DrawEqCtx)).Patch();
+                harmony.CreateClassProcessor(typeof(Patch_GenDraw_Draw)).Patch();
                 drawExtrasPatched = 1;
-                GSWLog.Trace("Patched DrawEquipmentAndApparelExtras context and GenDraw.DrawMeshNowOrLater");
+                GSWLog.Trace("Patched DrawEquipmentAndApparelExtras, PawnRenderer.DrawEquipment/DrawEquipmentAiming, and GenDraw.DrawMeshNowOrLater");
             }
             catch (System.Exception e)
             {
-                GSWLog.WarnOnce($"Failed to patch DrawEquipmentAndApparelExtras/GenDraw: {e}", typeof(Patches.Patch_DrawExtrasCtx).GetHashCode());
+                GSWLog.WarnOnce($"Failed to patch equipment draw methods: {e}", typeof(Patches.Patch_DrawExtrasCtx).GetHashCode());
             }
 
             int rnPatched = 0;
