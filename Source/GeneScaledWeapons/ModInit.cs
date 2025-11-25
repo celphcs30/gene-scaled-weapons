@@ -17,56 +17,13 @@ namespace GeneScaledWeapons
             }
 
             var harmony = new Harmony("celphcs30.genescaledweapons");
-            bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
-            GSWLog.Trace("Init. PawnRenderNode exists: " + hasNodes);
 
-            // Patch all equipment draw methods to set context, then scale at GenDraw.DrawMeshNowOrLater
-            int drawExtrasPatched = 0;
-            try
-            {
-                harmony.CreateClassProcessor(typeof(Patches.Patch_DrawExtrasCtx)).Patch();
-                harmony.CreateClassProcessor(typeof(Patch_PawnRenderer_DrawEqCtx)).Patch();
-                harmony.CreateClassProcessor(typeof(Patch_GenDraw_Draw)).Patch();
-                drawExtrasPatched = 1;
-                GSWLog.Trace("Patched DrawEquipmentAndApparelExtras, PawnRenderer.DrawEquipment/DrawEquipmentAiming, and GenDraw.DrawMeshNowOrLater");
-            }
-            catch (System.Exception e)
-            {
-                GSWLog.WarnOnce($"Failed to patch equipment draw methods: {e}", typeof(Patches.Patch_DrawExtrasCtx).GetHashCode());
-            }
+            // Remove any old transpilers/attribute patches for DrawEquipment... and PawnRenderer/Nodes
+            // Apply manual patchers instead:
+            int ctx = EquipmentContextPatcher.Apply(harmony);
+            int draw = GenDrawPatcher.Apply(harmony);
 
-            int rnPatched = 0;
-            int classicPatched = 0;
-            if (hasNodes)
-            {
-                NodeScanUtil.LogPotentialEquipmentNodes();
-                Patcher16.Debug_ListRenderNodes();
-                rnPatched = Patcher16.Apply(harmony);
-                classicPatched = PatcherEquipmentUtility.Apply(harmony);
-            }
-            else
-            {
-                classicPatched = LegacyPatcher.Apply(harmony);
-            }
-
-            int totalPatched = rnPatched + classicPatched + drawExtrasPatched;
-
-            if (drawExtrasPatched > 0)
-            {
-                GSWLog.Min("GeneScaledWeapons: Patched DrawEquipmentAndApparelExtras (1.6 method)");
-            }
-
-            if (rnPatched == 0 && classicPatched > 0)
-            {
-                // Normal on vanilla 1.6; keep quiet by default.
-                GSWLog.Verb("1.6: No render-node weapon hooks found; using classic draw hooks.");
-            }
-            else if (totalPatched == 0)
-            {
-                GSWLog.Error("GeneScaledWeapons: No weapon draw hooks patched. Scaling cannot run.");
-            }
-
-            GSWLog.Min($"GeneScaledWeapons: Patch applied. Methods patched: DrawExtras={drawExtrasPatched}, RN={rnPatched}, classic={classicPatched}, total={totalPatched}");
+            GSWLog.Min($"GeneScaledWeapons: Patch applied. Context={ctx}, GenDraw={draw}");
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
