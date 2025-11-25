@@ -34,15 +34,26 @@ namespace GeneScaledWeapons
             // 2) Fallback: body graphic drawSize ratio (covers HAR big races)
             try
             {
-                var g = pawn.Drawer?.renderer?.graphics?.nakedGraphic;
-                if (g != null)
+                var renderer = pawn.Drawer?.renderer;
+                if (renderer != null)
                 {
-                    var ds = g.drawSize;
-                    // Vanilla adult human naked body graphic is ~1.5 on the longest axis
-                    float baseAxis = 1.5f;
-                    float axis = Mathf.Max(ds.x, ds.y);
-                    if (axis > 0.01f)
-                        return Mathf.Clamp(axis / baseAxis, 0.25f, 4.0f);
+                    var graphics = AccessTools.Field(typeof(PawnRenderer), "graphics")?.GetValue(renderer);
+                    if (graphics != null)
+                    {
+                        var nakedGraphic = AccessTools.Property(graphics.GetType(), "nakedGraphic")?.GetValue(graphics);
+                        if (nakedGraphic != null)
+                        {
+                            var drawSize = AccessTools.Property(nakedGraphic.GetType(), "drawSize")?.GetValue(nakedGraphic);
+                            if (drawSize is Vector2 ds)
+                            {
+                                // Vanilla adult human naked body graphic is ~1.5 on the longest axis
+                                float baseAxis = 1.5f;
+                                float axis = Mathf.Max(ds.x, ds.y);
+                                if (axis > 0.01f)
+                                    return Mathf.Clamp(axis / baseAxis, 0.25f, 4.0f);
+                            }
+                        }
+                    }
                 }
             }
             catch { }
