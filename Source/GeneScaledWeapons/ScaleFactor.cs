@@ -23,16 +23,19 @@ namespace GeneScaledWeapons
             if (pawn == null || pawn.Destroyed) return 1f;
 
             var stat = VefCosmeticSize;
-            if (stat == null) return 1f; // no VEF -> leave weapon unchanged
+            if (stat == null) return 1f; // no VEF -> no change
 
             float v = pawn.GetStatValue(stat, true);
             if (float.IsNaN(v) || float.IsInfinity(v) || v <= 0f) return 1f;
 
-            // Same relation as pawn render size: weapon scale = VEF value
-            // Optional safety clamp if you want it:
-            // v = Mathf.Clamp(v, 0.05f, 4f);
+            const float k = 0.5f; // 0=no change, 1=full size match. Try 0.5 first.
+            float target = 1f / v;     // full proportional
+            float f = Mathf.Pow(target, k);
 
-            return v;
+            // Optional mild safety clamp so nothing gets absurd
+            // f = Mathf.Clamp(f, 0.7f, 1.9f);
+
+            return f;
         }
 
         public static Matrix4x4 Apply(Matrix4x4 m, Pawn pawn)
