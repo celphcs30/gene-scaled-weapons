@@ -16,7 +16,7 @@ namespace GeneScaledWeapons
             if (applied) return 0;
             applied = true;
 
-            int patched = 0;
+            int classicPatched = 0;
 
             // Verse.PawnRenderUtility.*DrawEquipment*
             var util = AccessTools.TypeByName("Verse.PawnRenderUtility");
@@ -25,11 +25,16 @@ namespace GeneScaledWeapons
                 var methods = util.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                                   .Where(m => !m.IsGenericMethodDefinition &&
                                               (m.Name.IndexOf("DrawEquipment", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                               m.Name.IndexOf("DrawHeld", StringComparison.OrdinalIgnoreCase) >= 0));
+                                               m.Name.IndexOf("DrawHeld", StringComparison.OrdinalIgnoreCase) >= 0))
+                                  .ToList();
+
+                // Count found targets before patching
+                classicPatched += methods.Count;
 
                 foreach (var m in methods)
                 {
-                    TryPatch(harmony, m, ref patched);
+                    if (!TryPatch(harmony, m))
+                        classicPatched--; // Decrement if patch failed
                 }
             }
 
@@ -40,34 +45,35 @@ namespace GeneScaledWeapons
                 var methods = renderer.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                                       .Where(m => !m.IsGenericMethodDefinition &&
                                                   (m.Name.IndexOf("DrawEquipment", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                                   m.Name.IndexOf("DrawHeld", StringComparison.OrdinalIgnoreCase) >= 0));
+                                                   m.Name.IndexOf("DrawHeld", StringComparison.OrdinalIgnoreCase) >= 0))
+                                      .ToList();
+
+                // Count found targets before patching
+                classicPatched += methods.Count;
 
                 foreach (var m in methods)
                 {
-                    TryPatch(harmony, m, ref patched);
+                    if (!TryPatch(harmony, m))
+                        classicPatched--; // Decrement if patch failed
                 }
             }
 
-            if (patched == 0)
-                GSWLog.WarnOnce("Equip patch: found no *DrawEquipment* methods to patch.", 19482232);
-            else
-                GSWLog.Min($"Equip patch: Patched {patched} method(s).");
-
-            return patched;
+            return classicPatched;
         }
 
-        private static void TryPatch(Harmony harmony, MethodBase m, ref int count)
+        private static bool TryPatch(Harmony harmony, MethodBase m)
         {
             try
             {
                 var transpiler = new HarmonyMethod(typeof(Patch_TRSScale).GetMethod(nameof(Patch_TRSScale.Transpiler)));
                 harmony.Patch(m, transpiler: transpiler);
                 GSWLog.Trace($"Equip patch: Patched {m.DeclaringType?.FullName}.{m.Name}");
-                count++;
+                return true;
             }
             catch (Exception e)
             {
                 GSWLog.WarnOnce($"Equip patch: Failed to patch {m.DeclaringType?.FullName}.{m.Name}: {e}", m.GetHashCode());
+                return false;
             }
         }
     }

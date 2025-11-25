@@ -17,20 +17,33 @@ namespace GeneScaledWeapons
             bool hasNodes = AccessTools.TypeByName("Verse.PawnRenderNode") != null;
             GSWLog.Trace("Init. PawnRenderNode exists: " + hasNodes);
 
-            int totalPatched = 0;
+            int rnPatched = 0;
+            int classicPatched = 0;
             if (hasNodes)
             {
                 NodeScanUtil.LogPotentialEquipmentNodes();
                 Patcher16.Debug_ListRenderNodes();
-                totalPatched += Patcher16.Apply(harmony);
-                totalPatched += PatcherEquipmentUtility.Apply(harmony);
+                rnPatched = Patcher16.Apply(harmony);
+                classicPatched = PatcherEquipmentUtility.Apply(harmony);
             }
             else
             {
-                totalPatched += LegacyPatcher.Apply(harmony);
+                classicPatched = LegacyPatcher.Apply(harmony);
             }
 
-            GSWLog.Min($"Patch applied. Methods patched: {totalPatched}");
+            int totalPatched = rnPatched + classicPatched;
+
+            if (rnPatched == 0 && classicPatched > 0)
+            {
+                // Normal on vanilla 1.6; keep quiet by default.
+                GSWLog.Verb("1.6: No render-node weapon hooks found; using classic draw hooks.");
+            }
+            else if (totalPatched == 0)
+            {
+                GSWLog.Error("No weapon draw hooks patched. Weapon scaling disabled.");
+            }
+
+            GSWLog.Min($"GeneScaledWeapons: Patch applied. Methods patched: RN={rnPatched}, classic={classicPatched}, total={totalPatched}");
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
@@ -47,10 +60,13 @@ namespace GeneScaledWeapons
                     GSWLog.LevelSetting = lvl;
                 }
             }
+            l.Gap();
+            l.CheckboxLabeled("Scale ranged weapons", ref Settings.scaleRanged);
+            l.CheckboxLabeled("Scale melee weapons", ref Settings.scaleMelee);
             l.End();
         }
 
-        public override string SettingsCategory() => "GeneScaledWeapons";
+        public override string SettingsCategory() => "Gene Scaled Weapons";
     }
 }
 

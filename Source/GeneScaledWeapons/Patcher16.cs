@@ -19,7 +19,7 @@ namespace GeneScaledWeapons
             if (applied) return 0;
             applied = true;
 
-            int patched = 0;
+            int rnPatched = 0;
             var baseNode = AccessTools.TypeByName("Verse.PawnRenderNode");
             var baseWorker = AccessTools.TypeByName("Verse.PawnRenderNodeWorker");
 
@@ -38,7 +38,6 @@ namespace GeneScaledWeapons
 
             var transpiler = new HarmonyMethod(typeof(Patch_RenderNode_Equipment).GetMethod(nameof(Patch_RenderNode_Equipment.Transpiler), BindingFlags.Public | BindingFlags.Static));
 
-            int localPatched = 0;
             foreach (var t in candidates)
             {
                 var methods = t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
@@ -48,12 +47,12 @@ namespace GeneScaledWeapons
 
                 foreach (var m in methods)
                 {
+                    // Count found targets before patching
+                    rnPatched++;
                     try
                     {
                         harmony.Patch(m, transpiler: transpiler);
                         GSWLog.Trace($"1.6: Patched {t.FullName}.{m.Name}");
-                        patched++;
-                        localPatched++;
                     }
                     catch (Exception e)
                     {
@@ -62,12 +61,7 @@ namespace GeneScaledWeapons
                 }
             }
 
-            if (patched == 0)
-                GSWLog.WarnOnce("1.6 patch: No equipment/weapon render-node methods got patched. Weapon scaling disabled.", 19482231);
-            else
-                GSWLog.Trace($"1.6 patch: Patched {patched} method(s).");
-
-            return patched;
+            return rnPatched;
         }
 
 #if DEBUG
@@ -135,20 +129,25 @@ namespace GeneScaledWeapons
             try
             {
                 var pawn = TryGetPawnFromNode(nodeObj);
-                if (pawn != null)
-                {
-                    // Check if the weapon should be skipped (get primary equipment)
-                    var weapon = pawn.equipment?.Primary;
-                    if (weapon?.def != null && GeneScaleUtil.ShouldSkip(weapon.def))
-                        return scale; // Skip scaling for this weapon
+                if (pawn == null) return scale;
 
-                    float factor = GeneScaleUtil.GetPawnScaleFactor(pawn);
-                    if (!Mathf.Approximately(factor, 1f))
-                    {
-                        scale.x *= factor;
-                        scale.z *= factor;
-                    }
-                }
+                // Get primary equipment
+                var weapon = pawn.equipment?.Primary;
+                if (weapon == null) return scale;
+
+                // Central scale gate (BEWH_* blacklist, settings, extensions)
+                if (!ScaleGate.ShouldScale(weapon)) return scale;
+
+                // Per-pawn multiplier
+                float factor = GeneScaleUtil.GetPawnScaleFactor(pawn);
+                if (Mathf.Approximately(factor, 1f)) return scale;
+
+                // Apply per-def multiplier
+                float extraMult = ScaleGate.ExtraMult(weapon);
+                factor *= extraMult;
+
+                scale.x *= factor;
+                scale.z *= factor;
             }
             catch (Exception e)
             {

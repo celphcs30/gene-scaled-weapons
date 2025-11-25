@@ -51,18 +51,18 @@ namespace GeneScaledWeapons
 
                 if (found > 0)
                 {
-                    Log.Message($"[GeneScaledWeapons] Fallback patched {found} method(s) by assembly scan.");
+                    GSWLog.Trace($"Fallback patched {found} method(s) by assembly scan.");
                     patched += found;
                 }
             }
 
             if (patched == 0 && !suppressWarnings)
             {
-                Log.Warning("[GeneScaledWeapons] Could not locate any DrawEquipmentAiming/DrawEquipment methods to patch. Weapon scaling disabled.");
+                GSWLog.WarnOnce("Could not locate any DrawEquipmentAiming/DrawEquipment methods to patch. Weapon scaling disabled.", 19482233);
             }
             else if (patched > 0)
             {
-                Log.Message($"[GeneScaledWeapons] Legacy patch: Patched {patched} method(s).");
+                GSWLog.Min($"Legacy patch: Patched {patched} method(s).");
             }
 
             return patched;

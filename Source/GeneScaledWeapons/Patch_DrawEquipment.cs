@@ -68,11 +68,15 @@ namespace GeneScaledWeapons
             {
                 var pawn = GetPawn(renderer);
                 var eq = pawn?.equipment?.Primary;
-                if (eq?.def != null && !GeneScaleUtil.ShouldSkip(eq.def))
+                if (eq != null && ScaleGate.ShouldScale(eq))
                 {
                     float f = GeneScaleUtil.GetPawnScaleFactor(pawn);
                     if (f > 0f && Mathf.Abs(f - 1f) > 0.01f)
+                    {
+                        float extraMult = ScaleGate.ExtraMult(eq);
+                        f *= extraMult;
                         matrix = matrix * Matrix4x4.Scale(new Vector3(f, 1f, f));
+                    }
                 }
             }
             catch { }
@@ -87,11 +91,13 @@ namespace GeneScaledWeapons
             {
                 var pawn = GetPawn(renderer);
                 var eq = pawn?.equipment?.Primary;
-                if (eq?.def != null && !GeneScaleUtil.ShouldSkip(eq.def))
+                if (eq != null && ScaleGate.ShouldScale(eq))
                 {
                     float f = GeneScaleUtil.GetPawnScaleFactor(pawn);
                     if (f > 0f && Mathf.Abs(f - 1f) > 0.01f)
                     {
+                        float extraMult = ScaleGate.ExtraMult(eq);
+                        f *= extraMult;
                         var m = Matrix4x4.TRS(pos, rot, new Vector3(f, 1f, f));
                         Graphics.DrawMesh(mesh, m, material, layer);
                         return;

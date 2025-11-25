@@ -134,13 +134,16 @@ namespace GeneScaledWeapons
                 // Must be drawn for this pawn (not some preview or other owner)
                 if (comp.PrimaryVerb?.CasterPawn != pawn) return s;
 
-                // Optional: allow defs to opt-out
-                var skipExt = eq.def?.GetModExtension<ModExt_SkipGeneWeaponScale>();
-                if (skipExt != null) return s;
+                // Central scale gate (BEWH_* blacklist, settings, extensions)
+                if (!ScaleGate.ShouldScale(eq)) return s;
 
                 // Per-pawn multiplier
                 float mult = GeneScaleUtil.WeaponScaleFor(pawn);
                 if (mult == 1f) return s;
+
+                // Apply per-def multiplier
+                float extraMult = ScaleGate.ExtraMult(eq);
+                mult *= extraMult;
 
                 // Scale only X/Z for RimWorld quads; keep Y as-is
                 return new Vector3(s.x * mult, s.y, s.z * mult);
