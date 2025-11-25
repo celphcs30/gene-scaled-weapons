@@ -7,13 +7,56 @@ namespace GeneScaledWeapons
 {
     internal static class ScaleFactor
     {
+        private static StatDef _vefCosmeticSize;
+        private static StatDef VefCosmeticSize
+        {
+            get
+            {
+                if (_vefCosmeticSize == null)
+                    _vefCosmeticSize = DefDatabase<StatDef>.GetNamedSilentFail("VEF_CosmeticBodySize_Multiplier");
+                return _vefCosmeticSize;
+            }
+        }
+
         public static float Factor(Pawn pawn)
         {
-            if (pawn == null) return 1f;
-            float f = pawn.BodySize; // core behavior: scale to body size
-            if (f < 0.25f) f = 0.25f;
-            if (f > 4f) f = 4f;
-            return f;
+            if (pawn == null || pawn.Destroyed) return 1f;
+
+            // 1) Prefer VEF stat if present
+            var stat = VefCosmeticSize;
+            if (stat != null)
+            {
+                float fVEF = pawn.GetStatValue(stat, true);
+                if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
+                    return Mathf.Clamp(fVEF, 0.25f, 4.0f);
+            }
+
+            // 2) Fallback: body graphic drawSize ratio (covers HAR big races)
+            try
+            {
+                var g = pawn.Drawer?.renderer?.graphics?.nakedGraphic;
+                if (g != null)
+                {
+                    var ds = g.drawSize;
+                    // Vanilla adult human naked body graphic is ~1.5 on the longest axis
+                    float baseAxis = 1.5f;
+                    float axis = Mathf.Max(ds.x, ds.y);
+                    if (axis > 0.01f)
+                        return Mathf.Clamp(axis / baseAxis, 0.25f, 4.0f);
+                }
+            }
+            catch { }
+
+            // 3) Fallback: BodySize stat as a rough proxy
+            try
+            {
+                float bodySize = pawn.BodySize; // humans ~1.0
+                if (bodySize > 0.01f)
+                    return Mathf.Clamp(bodySize, 0.25f, 4.0f);
+            }
+            catch { }
+
+            return 1f;
         }
 
         public static Matrix4x4 Apply(Matrix4x4 m, Pawn pawn)
