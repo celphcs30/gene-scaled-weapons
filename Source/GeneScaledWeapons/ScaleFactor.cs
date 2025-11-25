@@ -28,12 +28,12 @@ namespace GeneScaledWeapons
             float v = pawn.GetStatValue(stat, true);
             if (float.IsNaN(v) || float.IsInfinity(v) || v <= 0f) return 1f;
 
-            const float k = 0.5f; // 0=no change, 1=full size match. Try 0.5 first.
-            float target = 1f / v;     // full proportional
+            const float k = 0.5f;              // 0=no change, 1=full match. 0.4–0.6 looks good.
+            float target = v;                  // DIRECT mapping (bigger VEF => bigger weapon)
             float f = Mathf.Pow(target, k);
 
-            // Optional mild safety clamp so nothing gets absurd
-            // f = Mathf.Clamp(f, 0.7f, 1.9f);
+            // Optional mild clamp so the extremes aren't silly. Adjust/tweak or remove.
+            // f = Mathf.Clamp(f, 0.75f, 1.6f);
 
             return f;
         }
