@@ -16,7 +16,7 @@ namespace GeneScaledWeapons
         static readonly MethodInfo MI_TRS = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.TRS), new[] { typeof(Vector3), typeof(Quaternion), typeof(Vector3) });
         static readonly MethodInfo MI_SCALE = AccessTools.Method(typeof(Matrix4x4), nameof(Matrix4x4.Scale), new[] { typeof(Vector3) });
         static readonly MethodInfo MI_SETTRS = AccessTools.Method(typeof(Matrix4x4), "SetTRS", new[] { typeof(Vector3), typeof(Quaternion), typeof(Vector3) });
-        static readonly MethodInfo MI_ADJUST = AccessTools.Method(typeof(Patch_TRSScale), nameof(AdjustScale));
+        static readonly MethodInfo MI_MULTIPLY = AccessTools.Method(typeof(ScaleFactor), nameof(ScaleFactor.MultiplyVec));
 
         private static CodeInstruction LoadArg(int index)
         {
@@ -36,14 +36,20 @@ namespace GeneScaledWeapons
             bool patchedAny = false;
             int countTRS = 0, countScale = 0, countSetTRS = 0;
 
-            // If static, find a Pawn arg if present
+            // Find Pawn and Thing/eq parameters
             int pawnParamIndex = -1;
-            if (original.IsStatic)
+            int eqParamIndex = -1;
+            var parameters = original.GetParameters();
+            for (int i = 0; i < parameters.Length; i++)
             {
-                var pars = original.GetParameters();
-                for (int i = 0; i < pars.Length; i++)
-                    if (typeof(Pawn).IsAssignableFrom(pars[i].ParameterType)) { pawnParamIndex = i; break; }
+                if (typeof(Pawn).IsAssignableFrom(parameters[i].ParameterType) && pawnParamIndex < 0)
+                    pawnParamIndex = i;
+                if (typeof(Thing).IsAssignableFrom(parameters[i].ParameterType) && eqParamIndex < 0)
+                    eqParamIndex = i;
             }
+
+            // If instance method, check if 'this' is PawnRenderer (has pawn field)
+            bool isInstanceMethod = !original.IsStatic;
 
             for (int i = 0; i < list.Count; i++)
             {
@@ -59,14 +65,33 @@ namespace GeneScaledWeapons
                     if (isScale) countScale++;
                     if (isSetTRS) countSetTRS++;
 
-                    // Stack right now: ..., [this?], pos, rot, scale  (for TRS/SetTRS)  OR ..., scale (for Scale)
-                    // We want: ..., ..., scale, context -> AdjustScale -> ..., ..., scale'
-                    if (original.IsStatic && pawnParamIndex >= 0)
-                        yield return LoadArg(pawnParamIndex);
-                    else
-                        yield return new CodeInstruction(OpCodes.Ldarg_0); // 'this' OR first arg for statics without Pawn; AdjustScale will resolve
+                    // Stack before TRS/Scale: ..., pos, rot, scale (for TRS) OR ..., scale (for Scale)
+                    // We need to multiply the scale Vector3: ScaleFactor.MultiplyVec(scale, pawn, eq)
+                    // Stack after MultiplyVec: ..., pos, rot, scale' (modified scale)
 
-                    yield return new CodeInstruction(OpCodes.Call, MI_ADJUST);
+                    // Before the call, scale is on stack. We need to:
+                    // 1. Load pawn (from param or 'this')
+                    // 2. Load eq (from param or pawn.equipment.Primary)
+                    // 3. Call MultiplyVec(scale, pawn, eq)
+
+                    // Load pawn (or PawnRenderer 'this')
+                    if (pawnParamIndex >= 0)
+                        yield return LoadArg(pawnParamIndex);
+                    else if (isInstanceMethod && original.DeclaringType?.Name == "PawnRenderer")
+                        yield return new CodeInstruction(OpCodes.Ldarg_0); // 'this' PawnRenderer, MultiplyVec will extract pawn
+                    else if (isInstanceMethod)
+                        yield return new CodeInstruction(OpCodes.Ldarg_0); // 'this' for instance methods, might be useful
+                    else
+                        yield return new CodeInstruction(OpCodes.Ldnull); // No pawn available
+
+                    // Load eq
+                    if (eqParamIndex >= 0)
+                        yield return LoadArg(eqParamIndex);
+                    else
+                        yield return new CodeInstruction(OpCodes.Ldnull); // Will resolve from pawn in MultiplyVec
+
+                    // Call MultiplyVec(scale, pawn, eq) -> returns modified scale
+                    yield return new CodeInstruction(OpCodes.Call, MI_MULTIPLY);
                     patchedAny = true;
                 }
 
@@ -75,7 +100,8 @@ namespace GeneScaledWeapons
 
             if (patchedAny)
                 GSWLog.Trace($"Transpiler on {original.DeclaringType?.FullName}.{original.Name}: TRS={countTRS}, SetTRS={countSetTRS}, Scale={countScale}");
-            // iterator ends
+            else
+                GSWLog.WarnOnce($"Transpiler didn't find Matrix4x4.TRS/Scale/SetTRS in {original.DeclaringType?.FullName}.{original.Name}", original.GetHashCode());
         }
 
         static Pawn TryGetPawn(object ctx)
@@ -118,40 +144,23 @@ namespace GeneScaledWeapons
             return null;
         }
 
-        public static Vector3 AdjustScale(Vector3 s, object context)
+        // Helper to resolve Pawn and Thing from context (backward compat)
+        static void ResolveContext(object context, out Pawn pawn, out Thing eq)
         {
-            try
+            pawn = TryGetPawn(context);
+            
+            // Try to get eq from context or pawn
+            if (context is Thing ctxThing)
             {
-                // Resolve pawn
-                var pawn = TryGetPawn(context);
-                if (pawn == null) return s;
-
-                // Only scale actual held weapons
-                if (!(context is ThingWithComps eq)) return s;
-                var comp = eq.TryGetComp<CompEquippable>();
-                if (comp == null) return s;
-
-                // Must be drawn for this pawn (not some preview or other owner)
-                if (comp.PrimaryVerb?.CasterPawn != pawn) return s;
-
-                // Central scale gate (BEWH_* blacklist, settings, extensions)
-                if (!ScaleGate.ShouldScale(eq)) return s;
-
-                // Per-pawn multiplier
-                float mult = GeneScaleUtil.WeaponScaleFor(pawn);
-                if (Mathf.Approximately(mult, 1f)) return s;
-
-                // Apply per-def multiplier
-                float extraMult = ScaleGate.ExtraMult(eq);
-                mult *= extraMult;
-
-                // Scale only X/Z for RimWorld quads; keep Y as-is
-                return new Vector3(s.x * mult, s.y, s.z * mult);
+                eq = ctxThing;
             }
-            catch (Exception e)
+            else if (pawn != null)
             {
-                GSWLog.Error($"AdjustScale error: {e}");
-                return s;
+                eq = pawn.equipment?.Primary;
+            }
+            else
+            {
+                eq = null;
             }
         }
     }
