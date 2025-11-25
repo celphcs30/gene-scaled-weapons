@@ -24,22 +24,23 @@ namespace GeneScaledWeapons
 
             // 1) Prefer VEF stat if present
             // VEF_CosmeticBodySize_Multiplier: lower values = bigger pawns (primarch 0.55 = biggest)
-            // For weapon scaling: bigger pawns should have bigger weapons
-            // Try simple inverse: 1.0 / multiplier
+            // Try OPPOSITE: use multiplier directly but scale it up
+            // Primarch (0.55) -> scale it up to make bigger weapons
             var stat = VefCosmeticSize;
             if (stat != null)
             {
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
                 {
-                    // Direct inverse: 1.0 / multiplier
-                    // Primarch (0.55) -> 1.0 / 0.55 = 1.82x
-                    // Normal (1.0) -> 1.0 / 1.0 = 1.0x
-                    // Small (1.5) -> 1.0 / 1.5 = 0.67x
-                    float inverted = 1.0f / fVEF;
-                    float clamped = Mathf.Clamp(inverted, 0.25f, 2.5f);
+                    // Use multiplier directly but transform: lower multiplier (bigger pawn) = bigger weapon
+                    // Try: scale = 1.0 + (1.0 - multiplier) * some_factor
+                    // Or simpler: scale = multiplier * scale_factor, then invert the relationship
+                    // Actually, let's try: scale = 1.0 / (multiplier * 0.5) to make it bigger
+                    // Or: scale = 2.0 / multiplier
+                    float scaled = 2.0f / fVEF;
+                    float clamped = Mathf.Clamp(scaled, 0.25f, 3.0f);
                     if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
-                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> inverted {inverted:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
+                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> scaled {scaled:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
                     return clamped;
                 }
             }
