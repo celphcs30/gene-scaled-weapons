@@ -24,6 +24,7 @@ namespace GeneScaledWeapons
                 {
                     harmony.Patch(m, prefix, null, null, finalizer);
                     patched++;
+                    Log.Message($"[GeneScaledWeapons] Patched RN: {m.DeclaringType?.Name}.{m.Name}");
                 }
             }
             catch (Exception e)
@@ -39,6 +40,7 @@ namespace GeneScaledWeapons
                 {
                     harmony.Patch(m, prefix, null, null, finalizer);
                     patched++;
+                    Log.Message($"[GeneScaledWeapons] Patched: {m.DeclaringType?.Name}.{m.Name}");
                 }
             }
             catch (Exception e)
@@ -56,6 +58,7 @@ namespace GeneScaledWeapons
                     {
                         harmony.Patch(m, prefix, null, null, finalizer);
                         patched++;
+                        Log.Message($"[GeneScaledWeapons] Patched: {m.DeclaringType?.Name}.{m.Name}");
                     }
                 }
             }
@@ -150,7 +153,16 @@ namespace GeneScaledWeapons
             }
 
             if (pawn != null)
+            {
                 RenderCtx.CurrentPawn = pawn;
+                var factor = ScaleFactor.Factor(pawn);
+                if (Prefs.DevMode)
+                    Log.Message($"[GeneScaledWeapons] Context set: pawn={pawn?.LabelShortCap}, factor={factor:F2}");
+            }
+            else if (Prefs.DevMode)
+            {
+                Log.Warning($"[GeneScaledWeapons] ContextPrefix: Could not extract pawn from instance={__instance?.GetType()?.Name}, args={__args?.Length}");
+            }
         }
 
         private static void ContextFinalizer()

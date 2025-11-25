@@ -46,7 +46,13 @@ namespace GeneScaledWeapons
             {
                 if (__args[i] is Matrix4x4 m)
                 {
-                    __args[i] = ScaleFactor.Apply(m, pawn);
+                    var factor = ScaleFactor.Factor(pawn);
+                    if (!Mathf.Approximately(factor, 1f))
+                    {
+                        __args[i] = ScaleFactor.Apply(m, pawn);
+                        if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% of calls to avoid spam
+                            Log.Message($"[GeneScaledWeapons] Scaled matrix: pawn={pawn?.LabelShortCap}, factor={factor:F2}");
+                    }
                     break;
                 }
             }

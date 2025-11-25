@@ -28,7 +28,12 @@ namespace GeneScaledWeapons
             {
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
-                    return Mathf.Clamp(fVEF, 0.25f, 4.0f);
+                {
+                    float clamped = Mathf.Clamp(fVEF, 0.25f, 4.0f);
+                    if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
+                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> {clamped:F2} for {pawn?.LabelShortCap}");
+                    return clamped;
+                }
             }
 
             // 2) Fallback: body graphic drawSize ratio (covers HAR big races)
