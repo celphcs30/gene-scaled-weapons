@@ -24,12 +24,12 @@ namespace GeneScaledWeapons
                 {
                     harmony.Patch(m, prefix, null, null, finalizer);
                     patched++;
-                    Log.Message($"[GeneScaledWeapons] Patched RN: {m.DeclaringType?.Name}.{m.Name}");
+                    GSWLog.Trace($"Patched RN: {m.DeclaringType?.Name}.{m.Name}");
                 }
             }
             catch (Exception e)
             {
-                Log.Warning($"[GeneScaledWeapons] RN equipment scan failed: {e}");
+                GSWLog.WarnOnce($"RN equipment scan failed: {e}", 1001);
             }
 
             // 2) Legacy utility: PawnRenderUtility.DrawEquipmentAndApparelExtras (1.4–1.6 in some builds)
@@ -40,12 +40,12 @@ namespace GeneScaledWeapons
                 {
                     harmony.Patch(m, prefix, null, null, finalizer);
                     patched++;
-                    Log.Message($"[GeneScaledWeapons] Patched: {m.DeclaringType?.Name}.{m.Name}");
+                    GSWLog.Trace($"Patched: {m.DeclaringType?.Name}.{m.Name}");
                 }
             }
             catch (Exception e)
             {
-                Log.Warning($"[GeneScaledWeapons] Failed to patch DrawEquipmentAndApparelExtras: {e}");
+                GSWLog.WarnOnce($"Failed to patch DrawEquipmentAndApparelExtras: {e}", 1002);
             }
 
             // 3) Legacy renderer methods if they still exist (1.3–1.5)
@@ -58,16 +58,16 @@ namespace GeneScaledWeapons
                     {
                         harmony.Patch(m, prefix, null, null, finalizer);
                         patched++;
-                        Log.Message($"[GeneScaledWeapons] Patched: {m.DeclaringType?.Name}.{m.Name}");
+                        GSWLog.Trace($"Patched: {m.DeclaringType?.Name}.{m.Name}");
                     }
                 }
             }
             catch (Exception e)
             {
-                Log.Warning($"[GeneScaledWeapons] Failed to patch PawnRenderer equipment methods: {e}");
+                GSWLog.WarnOnce($"Failed to patch PawnRenderer equipment methods: {e}", 1003);
             }
 
-            Log.Message($"[GeneScaledWeapons] Equipment context methods patched: {patched}");
+            GSWLog.Verb($"Equipment context methods patched: {patched}");
             return patched;
         }
 

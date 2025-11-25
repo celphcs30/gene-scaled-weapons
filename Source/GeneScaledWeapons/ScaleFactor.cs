@@ -46,31 +46,6 @@ namespace GeneScaledWeapons
             var s = Matrix4x4.Scale(new Vector3(f, 1f, f));
             return m * s;
         }
-
-        // Legacy Vector3 multiply (for backward compat with old TRS patches)
-        public static Vector3 MultiplyVec(Vector3 vanillaScale, object pawnOrRenderer, Thing eq)
-        {
-            Pawn pawn = null;
-            if (pawnOrRenderer is Pawn p)
-            {
-                pawn = p;
-            }
-            else if (pawnOrRenderer is PawnRenderer pr)
-            {
-                var pawnField = AccessTools.Field(typeof(PawnRenderer), "pawn");
-                pawn = pawnField?.GetValue(pr) as Pawn;
-            }
-            
-            if (pawn == null) return vanillaScale;
-            
-            float f = Factor(pawn);
-            if (f == 1f) return vanillaScale;
-            
-            return new Vector3(vanillaScale.x * f, vanillaScale.y, vanillaScale.z * f);
-        }
-
-        // Legacy alias for backward compat
-        public static Matrix4x4 MultiplyMatrix(Matrix4x4 m, Pawn pawn) => Apply(m, pawn);
     }
 }
 

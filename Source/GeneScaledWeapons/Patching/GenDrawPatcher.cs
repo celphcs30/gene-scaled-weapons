@@ -42,10 +42,10 @@ namespace GeneScaledWeapons
             }
             catch (Exception e)
             {
-                Log.Warning($"[GeneScaledWeapons] Failed to patch draw methods: {e}");
+                GSWLog.WarnOnce($"Failed to patch draw methods: {e}", 2001);
             }
 
-            Log.Message($"[GeneScaledWeapons] Draw methods patched: {patched}");
+            GSWLog.Verb($"GenDraw.DrawMeshNowOrLater patched: {patched}");
             return patched;
         }
 
@@ -66,20 +66,20 @@ namespace GeneScaledWeapons
                     {
                         __args[i] = ScaleFactor.Apply(m, pawn);
                         // Log occasionally to confirm it's working
-                        if (Prefs.DevMode && UnityEngine.Random.value < 0.05f) // Log 5% of calls
-                            Log.Message($"[GeneScaledWeapons] Scaled matrix: pawn={pawn?.LabelShortCap}, factor={factor:F2}");
+                        if (UnityEngine.Random.value < 0.05f) // Log 5% of calls
+                            GSWLog.Trace($"Scaled matrix: pawn={pawn?.LabelShortCap}, factor={factor:F2}");
                     }
                     break;
                 }
             }
 
             // Debug: log if we're called but no matrix found, or if pawn is null
-            if (Prefs.DevMode && UnityEngine.Random.value < 0.001f) // Very rare log
+            if (UnityEngine.Random.value < 0.001f) // Very rare log
             {
                 if (pawn == null)
-                    Log.Warning($"[GeneScaledWeapons] GenDraw called but no pawn context");
+                    GSWLog.Trace("GenDraw called but no pawn context");
                 else if (!foundMatrix)
-                    Log.Warning($"[GeneScaledWeapons] GenDraw called with pawn={pawn?.LabelShortCap} but no Matrix4x4 in args");
+                    GSWLog.Trace($"GenDraw called with pawn={pawn?.LabelShortCap} but no Matrix4x4 in args");
             }
         }
     }

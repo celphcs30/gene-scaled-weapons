@@ -40,11 +40,6 @@ namespace GeneScaledWeapons
                     GSWLog.LevelSetting = lvl;
                 }
             }
-            l.Gap();
-            l.CheckboxLabeled("Scale ranged weapons", ref Settings.scaleRanged);
-            l.CheckboxLabeled("Scale melee weapons", ref Settings.scaleMelee);
-            l.GapLine();
-            l.CheckboxLabeled("Debug: Force scaling (ignore blacklists and settings)", ref Settings.debugForceScale);
             l.End();
         }
 

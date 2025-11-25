@@ -52,21 +52,10 @@
     <Compile Include="GeneScaledWeapons\ModInit.cs" />
     <Compile Include="GeneScaledWeapons\GSWLog.cs" />
     <Compile Include="GeneScaledWeapons\ModSettings_GSW.cs" />
-    <Compile Include="GeneScaledWeapons\GSWDefExtension.cs" />
-    <Compile Include="GeneScaledWeapons\ScaleGate.cs" />
     <Compile Include="GeneScaledWeapons\ScaleFactor.cs" />
     <Compile Include="GeneScaledWeapons\RenderCtx.cs" />
     <Compile Include="GeneScaledWeapons\Patching\EquipmentContextPatcher.cs" />
     <Compile Include="GeneScaledWeapons\Patching\GenDrawPatcher.cs" />
-    <Compile Include="GeneScaledWeapons\Patcher.cs" />
-    <Compile Include="GeneScaledWeapons\Patcher16.cs" />
-    <Compile Include="GeneScaledWeapons\PatcherEquipmentUtility.cs" />
-    <Compile Include="GeneScaledWeapons\NodeScanUtil.cs" />
-    <Compile Include="GeneScaledWeapons\Patch_TRSScale.cs" />
-    <Compile Include="GeneScaledWeapons\ModExt_SkipGeneWeaponScale.cs" />
-    <Compile Include="GeneScaledWeapons\GeneScaleUtil.cs" />
-    <Compile Include="GeneScaledWeapons\Patch_DrawEquipmentAiming.cs" />
-    <Compile Include="GeneScaledWeapons\Patch_DrawEquipment.cs" />
   </ItemGroup>
 </Project>
 
