@@ -25,23 +25,21 @@ namespace GeneScaledWeapons
             // 1) Prefer VEF stat if present
             // VEF_CosmeticBodySize_Multiplier: lower values = bigger pawns (primarch 0.55 = biggest)
             // For weapon scaling: bigger pawns should have bigger weapons
-            // Formula: weaponScale = 2.0 - bodySizeMultiplier
-            // This gives: 0.55 -> 1.45x, 1.0 -> 1.0x, 1.5 -> 0.5x
+            // Try simple inverse: 1.0 / multiplier
             var stat = VefCosmeticSize;
             if (stat != null)
             {
                 float fVEF = pawn.GetStatValue(stat, true);
                 if (!float.IsNaN(fVEF) && !float.IsInfinity(fVEF) && Mathf.Abs(fVEF - 0f) > 0.0001f)
                 {
-                    // Simple inverse: bigger pawns (lower multiplier) = bigger weapons
-                    // Primarch (0.55) -> 2.0 - 0.55 = 1.45x
-                    // Normal (1.0) -> 2.0 - 1.0 = 1.0x
-                    // Small (1.5) -> 2.0 - 1.5 = 0.5x
-                    float transformed = 2.0f - fVEF;
-                    // No curve for now - test if this works better
-                    float clamped = Mathf.Clamp(transformed, 0.25f, 2.5f);
+                    // Direct inverse: 1.0 / multiplier
+                    // Primarch (0.55) -> 1.0 / 0.55 = 1.82x
+                    // Normal (1.0) -> 1.0 / 1.0 = 1.0x
+                    // Small (1.5) -> 1.0 / 1.5 = 0.67x
+                    float inverted = 1.0f / fVEF;
+                    float clamped = Mathf.Clamp(inverted, 0.25f, 2.5f);
                     if (Prefs.DevMode && UnityEngine.Random.value < 0.01f) // Log 1% to avoid spam
-                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> transformed {transformed:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
+                        Log.Message($"[GeneScaledWeapons] VEF stat: {fVEF:F2} -> inverted {inverted:F2} -> clamped {clamped:F2} for {pawn?.LabelShortCap}");
                     return clamped;
                 }
             }
