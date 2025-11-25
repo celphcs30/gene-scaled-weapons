@@ -1,79 +1,138 @@
 # Gene Scaled Weapons
 
-RimWorld mod that scales held weapon draw size by the pawn's Vanilla Expanded Framework cosmetic body size multiplier.
+RimWorld mod that scales handheld weapons based on the pawn's Vanilla Expanded Framework cosmetic body size multiplier.
 
-## Features
+## Overview
 
-- **Dynamic weapon scaling**: Weapons held by pawns are scaled based on their `VEF_CosmeticBodySize_Multiplier` stat
-- **No hard dependency**: Works without VEF installed (defaults to 1.0 scale factor)
-- **Smart blacklist**: Automatically skips weapons from Rimdark mods
-- **Per-weapon control**: Use `ModExt_SkipGeneWeaponScale` extension to exclude specific weapons
-- **Safe scaling**: Clamps scale factor between 0.5x and 2.5x to prevent extreme sizes
+This mod automatically adjusts weapon size to match the pawn's body size, making weapons look proportional to the pawn holding them. Bigger pawns get bigger weapons, smaller pawns get smaller weapons.
 
 ## How It Works
 
-The mod uses a Harmony transpiler to intercept `Graphics.DrawMesh` calls in `PawnRenderer.DrawEquipmentAiming`. When a weapon is drawn, the mod:
+The mod uses the `VEF_CosmeticBodySize_Multiplier` stat from Vanilla Expanded Framework to determine weapon scaling:
 
-1. Checks if the weapon should be skipped (blacklist or extension flag)
-2. Retrieves the pawn's `VEF_CosmeticBodySize_Multiplier` stat value
-3. Applies the scale factor to the weapon's transformation matrix (X and Z axes only, Y remains 1.0)
-4. Draws the weapon at the scaled size
+- **Bigger pawns** (higher VEF value) → **Bigger weapons**
+- **Normal pawns** (VEF = 1.0) → **Normal weapons** (no change)
+- **Smaller pawns** (lower VEF value) → **Smaller weapons**
 
-## Compatibility
+### Scaling Formula
 
-- **RimWorld**: 1.6
-- **Vanilla Expanded Framework**: Optional (works without it)
-- **Harmony**: Required (included in mod)
+The mod uses a softened power curve to prevent extreme scaling:
 
-## Installation
-
-1. Place the `GeneScaledWeapons` folder in your RimWorld `Mods` directory
-2. Enable the mod in RimWorld's mod menu
-3. Load order doesn't matter (no dependencies)
-
-## Blacklist
-
-The mod automatically skips scaling for:
-- Any weapon with the `ModExt_SkipGeneWeaponScale` extension
-- Any weapon from a mod whose `packageId` contains "rimdark" (case-insensitive)
-
-### Adding Weapons to Blacklist
-
-To exclude a specific weapon, add the extension to its `ThingDef`:
-
-```xml
-<ThingDef ParentName="BaseWeapon">
-  <defName>ExampleWeapon</defName>
-  <modExtensions>
-    <li Class="GeneScaledWeapons.ModExt_SkipGeneWeaponScale"/>
-  </modExtensions>
-</ThingDef>
 ```
+weaponScale = VEF^0.5
+```
+
+Where:
+- `VEF` = `VEF_CosmeticBodySize_Multiplier` stat value
+- `0.5` = power curve factor (k) that softens the scaling
+
+### Example Scaling Values
+
+With k = 0.5:
+- **VEF 1.0** (normal human): `1.0^0.5 = 1.0x` (no change)
+- **VEF 1.5** (bigger pawn): `1.5^0.5 ≈ 1.22x` (22% larger)
+- **VEF 2.0** (huge pawn): `2.0^0.5 ≈ 1.41x` (41% larger)
+- **VEF 0.5** (small pawn): `0.5^0.5 ≈ 0.71x` (29% smaller)
+
+### Power Curve Factor (k)
+
+The `k` value controls how strongly the scaling is applied:
+- **k = 0.0**: No scaling (weapons always 1.0x)
+- **k = 0.5**: Moderate scaling (current default, good balance)
+- **k = 1.0**: Full proportional scaling (weapon scale = VEF value exactly)
+
+You can adjust `k` in `Source/GeneScaledWeapons/ScaleFactor.cs` if you want stronger or weaker scaling.
 
 ## Technical Details
 
-- **Package ID**: `celphcs30.genescaledweapons`
-- **Type**: C# Harmony mod
-- **Method**: IL transpiler on `PawnRenderer.DrawEquipmentAiming`
-- **Scale Range**: 0.5x to 2.5x (clamped)
-- **Scale Axes**: X and Z only (Y axis remains 1.0 to preserve vertical positioning)
+### Rendering System
 
-## Building from Source
+The mod hooks into RimWorld's rendering pipeline at multiple points:
 
-1. Ensure you have .NET SDK installed
-2. Place `0Harmony.dll` in the `Source` directory
-3. Build using:
-   ```bash
-   dotnet build Source/GeneScaledWeapons.csproj
-   ```
-4. The compiled DLL will be in `Assemblies/GeneScaledWeapons.dll`
+1. **Equipment Context Patcher**: Sets the current pawn context during equipment rendering
+   - Patches `PawnRenderUtility.DrawEquipmentAndApparelExtras`
+   - Patches `PawnRenderer.DrawEquipment` and `DrawEquipmentAiming`
+   - Scans for RenderNode equipment render methods
+
+2. **Graphics Draw Patcher**: Intercepts mesh drawing calls
+   - Patches `GenDraw.DrawMeshNowOrLater` (Matrix4x4 overloads)
+   - Patches `Graphics.DrawMesh` (Matrix4x4 overloads)
+   - Scales the transformation matrix before rendering
+
+3. **Thread-Safe Context**: Uses thread-static storage to track the current pawn during rendering
+
+### Matrix Scaling
+
+Weapons are scaled by modifying the transformation matrix:
+- Scales X and Z axes (horizontal plane)
+- Y axis (vertical) remains unchanged
+- Uses right-multiply: `matrix = matrix * Scale(Vector3(scale, 1, scale))`
+
+### Compatibility
+
+- **RimWorld 1.6.9373+**: Full support via RenderNode system
+- **Older versions**: Falls back to legacy `PawnRenderer` methods
+- **No VEF stat**: If `VEF_CosmeticBodySize_Multiplier` is not present, weapons remain unchanged (1.0x)
+
+## Requirements
+
+- RimWorld 1.6+
+- Vanilla Expanded Framework (for `VEF_CosmeticBodySize_Multiplier` stat)
+- Harmony (included in RimWorld)
+
+## Installation
+
+1. Download the mod
+2. Extract to RimWorld `Mods` directory
+3. Enable in RimWorld mod list
+4. Load order: Should load after Vanilla Expanded Framework
+
+## Settings
+
+The mod includes in-game settings (Options → Mod Settings → Gene Scaled Weapons):
+
+- **Logging level**: Control verbosity (Off, Minimal, Verbose, Trace)
+- **Scale ranged weapons**: Toggle scaling for ranged weapons (default: ON)
+- **Scale melee weapons**: Toggle scaling for melee weapons (default: OFF)
+- **Debug: Force scaling**: Ignore all blacklists and settings (for testing)
+
+## What Gets Scaled
+
+- **All handheld weapons** (ranged and melee, if enabled)
+- Only weapons held by pawns (not dropped items)
+- Works in both aiming and idle/held states
+
+## What Doesn't Get Scaled
+
+- Dropped weapons on the ground
+- Weapons in storage
+- Apparel and other equipment (only weapons)
+
+## Troubleshooting
+
+### Weapons aren't scaling
+
+1. Check that the pawn has the `VEF_CosmeticBodySize_Multiplier` stat
+2. Enable Dev Mode and check logs for `[GeneScaledWeapons]` messages
+3. Verify the mod is enabled and loaded after VEF
+
+### Weapons are too big/small
+
+Adjust the `k` value in `ScaleFactor.cs`:
+- Smaller k (e.g., 0.4) = softer scaling
+- Larger k (e.g., 0.6) = stronger scaling
+
+### Performance issues
+
+The mod uses efficient matrix operations and only scales during equipment rendering. If you experience issues, try:
+- Disabling scaling for melee weapons (if not needed)
+- Reducing logging level to Minimal or Off
 
 ## Credits
 
 - **Author**: celphcs30
-- **Harmony**: https://github.com/pardeike/Harmony
+- **Package ID**: `celphcs30.genescaledweapons`
 
 ## License
 
 See LICENSE file for details.
-
