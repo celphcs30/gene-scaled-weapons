@@ -11,6 +11,15 @@
     
     Bigger pawns get bigger weapons, smaller pawns get smaller weapons. The scaling uses a softened power curve (VEF^0.5) to prevent extreme sizes while maintaining visual proportionality.
     
+    [h1]Features[/h1]
+    [list]
+    [*] Automatic weapon scaling based on pawn body size
+    [*] Softened power curve prevents extreme scaling
+    [*] RimDark 40k weapons are automatically blacklisted (already correctly scaled)
+    [*] Configurable settings for ranged/melee weapons
+    [/list]
+    
+    [h1]Requirements[/h1]
     Requires Vanilla Expanded Framework for the VEF_CosmeticBodySize_Multiplier stat. Works with RimWorld 1.6+.
   </description>
   <loadAfter>

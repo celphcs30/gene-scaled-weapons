@@ -96,6 +96,12 @@ The mod includes in-game settings (Options → Mod Settings → Gene Scaled Weap
 - **Scale melee weapons**: Toggle scaling for melee weapons (default: OFF)
 - **Debug: Force scaling**: Ignore all blacklists and settings (for testing)
 
+## Blacklisted Weapons
+
+Certain weapons are automatically excluded from scaling because they already have correct scaling built-in:
+
+- **RimDark 40k - Mankinds Finest weapons**: All weapons with the `BEWH_` prefix or specific weapon tags are blacklisted to prevent double-scaling. These weapons are already properly scaled by the RimDark mod itself.
+
 ## What Gets Scaled
 
 - **All handheld weapons** (ranged and melee, if enabled)
@@ -107,6 +113,9 @@ The mod includes in-game settings (Options → Mod Settings → Gene Scaled Weap
 - Dropped weapons on the ground
 - Weapons in storage
 - Apparel and other equipment (only weapons)
+- **RimDark 40k weapons** (automatically blacklisted - these weapons are already correctly scaled by the RimDark mod)
+  - All weapons with `BEWH_` prefix
+  - Weapons with tags: `BEWH_AstartesRanged`, `BEWH_AstartesMelee`, `BEWH_ProtoAstartesRanged`, `BEWH_ProtoAstartesMelee`
 
 ## Troubleshooting
 

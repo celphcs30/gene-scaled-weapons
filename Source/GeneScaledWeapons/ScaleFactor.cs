@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -18,9 +19,58 @@ namespace GeneScaledWeapons
             }
         }
 
+        // Blacklisted weapon tags (RimDark 40k weapons that are already correctly scaled)
+        private static readonly HashSet<string> _blacklistedTags = new HashSet<string>
+        {
+            "BEWH_AstartesRanged",
+            "BEWH_AstartesMelee",
+            "BEWH_ProtoAstartesRanged",
+            "BEWH_ProtoAstartesMelee"
+        };
+
+        // Blacklisted defName prefixes (all RimDark 40k weapons start with BEWH_)
+        private static readonly HashSet<string> _blacklistedPrefixes = new HashSet<string>
+        {
+            "BEWH_"
+        };
+
+        private static bool IsBlacklisted(ThingDef weaponDef)
+        {
+            if (weaponDef == null) return false;
+
+            // Check defName prefix
+            if (!string.IsNullOrEmpty(weaponDef.defName))
+            {
+                foreach (var prefix in _blacklistedPrefixes)
+                {
+                    if (weaponDef.defName.StartsWith(prefix))
+                        return true;
+                }
+            }
+
+            // Check weapon tags
+            if (weaponDef.weaponTags != null)
+            {
+                foreach (var tag in weaponDef.weaponTags)
+                {
+                    if (_blacklistedTags.Contains(tag))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
         public static float Factor(Pawn pawn)
         {
             if (pawn == null || pawn.Destroyed) return 1f;
+
+            // Check if pawn's primary weapon is blacklisted
+            var weapon = pawn.equipment?.Primary;
+            if (weapon != null && IsBlacklisted(weapon.def))
+            {
+                return 1f; // No scaling for blacklisted weapons
+            }
 
             var stat = VefCosmeticSize;
             if (stat == null) return 1f; // no VEF -> no change
